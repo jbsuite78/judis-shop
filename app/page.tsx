@@ -39,7 +39,7 @@ const categorias = [
 {
   nombre: "Bebés",
   icono: "👶",
-  descripcion: "Ropa, accesorios, carriolas, pañaleras y artículos para bebé.",.
+  descripcion: "Ropa, accesorios, carriolas, pañaleras y artículos para bebé.",
 },
 {
   nombre: "Juguetes",
