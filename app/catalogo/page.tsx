@@ -367,9 +367,11 @@ fetch("/api/productos", { method: "DELETE", headers: { "Content-Type": "applicat
   </div>
 )}
                 <div className="p-6">
-                  <p className="text-sm font-bold uppercase tracking-wider text-pink-600">
-                    {producto.marca}
-                  </p>
+                  {producto.marca && producto.marca.toLowerCase() !== "sin marca" && (
+  <p className="text-sm font-bold uppercase tracking-wider text-pink-600">
+    {producto.marca}
+  </p>
+)}
 
                   <h3 className="mt-2 text-xl font-black">
                     {producto.nombre}
