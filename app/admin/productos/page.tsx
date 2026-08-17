@@ -25,6 +25,7 @@ const categorias = [
   "Bebés",
   "Juguetes",
   "Deportes",
+  "Artículos de Temporada 📒🧛🏻‍♂️🎅🏼",
 ];
 
 const marcas = [

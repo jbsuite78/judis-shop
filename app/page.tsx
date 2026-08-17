@@ -56,6 +56,11 @@ const categorias = [
   icono: "🧴",
   descripcion: "Vitaminas, suplementos y productos para el bienestar.",
 },
+{
+  nombre: "Artículos de Temporada 📒🧛🏻‍♂️🎅🏼",
+  icono: "🎉",
+  descripcion: "Productos especiales para cada temporada del año.",
+},
 ];
 
 
@@ -117,7 +122,7 @@ useEffect(() => {
       href="/carrito"
       className="rounded-xl bg-pink-600 px-6 py-3 font-bold text-white shadow-md transition hover:bg-pink-700"
     >
-     🛒 Carrito ({cantidadCarrito})
+    
     </a>
   </div>
 </header>
