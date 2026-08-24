@@ -15,7 +15,17 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: "Judi's Shop | Productos originales de Estados Unidos",
   description:
-    "Compra productos originales de Estados Unidos en Judi's Shop. Bolsas, perfumes, maquillaje, ropa, calzado y mucho más.",
+    "Compra productos originales de Estados Unidos en Judi's Shop. Bolsas, perfumes, maquillaje, ropa y mucho más.",
+  manifest: "/manifest.webmanifest",
+  icons: {
+    icon: "/icon-192.png",
+    apple: "/icon-192.png",
+  },
+  appleWebApp: {
+    capable: true,
+    title: "Judi's Shop",
+    statusBarStyle: "default",
+  },
 };
 
 export default function RootLayout({
