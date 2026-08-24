@@ -122,7 +122,7 @@ useEffect(() => {
       href="/carrito"
       className="rounded-xl bg-pink-600 px-6 py-3 font-bold text-white shadow-md transition hover:bg-pink-700"
     >
-    
+    <span className="text-2xl">🛒</span>
     </a>
   </div>
 </header>

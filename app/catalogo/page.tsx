@@ -175,18 +175,52 @@ fetch("/api/productos", { method: "DELETE", headers: { "Content-Type": "applicat
     window.alert("✅ Producto editado correctamente.");
   }
 
-  const categorias = useMemo(() => {
-    const lista = productos.map((producto) => producto.categoria);
+ const categorias = useMemo(() => {
+  const fijas = [
+    "Bolsas y Carteras",
+    "Perfumes",
+    "Calzado",
+    "Belleza",
+    "Ropa",
+    "Hogar",
+    "Cómputo y Videojuegos",
+    "Bebés",
+    "Juguetes",
+    "Deportes",
+    "Artículos de Temporada",
+  ];
 
-    return ["Todas", ...Array.from(new Set(lista)).sort()];
-  }, [productos]);
+  const existentes = productos.map((producto) => producto.categoria);
 
-  const marcas = useMemo(() => {
-    const lista = productos.map((producto) => producto.marca);
+  return ["Todas", ...Array.from(new Set([...fijas, ...existentes])).sort()];
+}, [productos]);
 
-    return ["Todas", ...Array.from(new Set(lista)).sort()];
-  }, [productos]);
+const marcas = useMemo(() => {
+  const fijas = [
+    "Guess",
+    "Coach",
+    "Michael Kors",
+    "Steve Madden",
+    "Tommy Hilfiger",
+    "Nike",
+    "Adidas",
+    "Puma",
+    "Victoria's Secret",
+    "Magellan",
+    "Columbia",
+    "Crocs",
+    "Paris Hilton",
+    "Ariana Grande",
+    "Perry Ellis",
+    "Reebok",
+    "Aldo",
+    "Levi's",
+  ];
 
+  const existentes = productos.map((producto) => producto.marca);
+
+  return ["Todas", ...Array.from(new Set([...fijas, ...existentes])).sort()];
+}, [productos]);
   const productosFiltrados = useMemo(() => {
     const texto = busqueda.toLowerCase().trim();
 
@@ -284,19 +318,7 @@ fetch("/api/productos", { method: "DELETE", headers: { "Content-Type": "applicat
             ))}
           </select>
 
-          <select
-            value={marcaSeleccionada}
-            onChange={(evento) =>
-              setMarcaSeleccionada(evento.target.value)
-            }
-            className="rounded-xl border border-slate-300 bg-white p-4"
-          >
-            {marcas.map((marca) => (
-              <option key={marca} value={marca}>
-                {marca === "Todas" ? "Todas las marcas" : marca}
-              </option>
-            ))}
-          </select>
+          
 
           <button
             type="button"
