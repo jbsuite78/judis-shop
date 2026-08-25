@@ -59,6 +59,7 @@ export async function PUT(request: Request) {
       nombre: datos.nombre,
       precio: Number(datos.precio),
       costo: Number(datos.costo),
+      imagenes: datos.imagenes ?? [],
       existencia: Number(datos.existencia),
       imagen: datos.imagen || null,
       marca: datos.marca,
