@@ -25,6 +25,8 @@ export default function AdminPage() {
       titulo: "🌐 Ver catálogo",
       descripcion: "Abrir Judi's Shop como la ve el cliente",
       href: "/catalogo",
+      
+ 
     },
   ];
 
