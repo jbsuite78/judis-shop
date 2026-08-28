@@ -1,12 +1,14 @@
 import { NextResponse } from "next/server";
-
+import sharp from "sharp";
 const GRAPH_VERSION = "v26.0";
 const GRAPH_URL = `https://graph.facebook.com/${GRAPH_VERSION}`;
+const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL!;
+const SUPABASE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY!;
 
 export async function POST(request: Request) {
   try {
-    const { imageUrl, caption } = await request.json();
-
+   const { imageUrl, caption, productoId } = await request.json();
+let instagramImageUrl = imageUrl;
     const pageId = process.env.META_PAGE_ID;
     const instagramId = process.env.META_INSTAGRAM_ID;
     const accessToken = process.env.META_PAGE_ACCESS_TOKEN;
@@ -61,10 +63,61 @@ export async function POST(request: Request) {
         { status: facebookResponse.status }
       );
     }
+try {
+  const imagenResponse = await fetch(imageUrl);
+
+  if (imagenResponse.ok) {
+    const imagenBuffer = Buffer.from(await imagenResponse.arrayBuffer());
+    const metadata = await sharp(imagenBuffer).metadata();
+
+    if (metadata.width && metadata.height) {
+      const proporcion = metadata.width / metadata.height;
+
+      // Instagram acepta aproximadamente desde 4:5 hasta 1.91:1
+      if (proporcion < 0.8 || proporcion > 1.91) {
+        const imagenCorregida = await sharp(imagenBuffer)
+          .resize(1080, 1350, {
+            fit: "contain",
+            background: { r: 255, g: 255, b: 255 },
+          })
+          .jpeg({ quality: 90 })
+          .toBuffer();
+
+        const nombreArchivo = `social-ready/${productoId ?? Date.now()}-${Date.now()}.jpg`;
+
+        const uploadResponse = await fetch(
+          `${SUPABASE_URL}/storage/v1/object/product-images/${nombreArchivo}`,
+          {
+            method: "POST",
+            headers: {
+              apikey: SUPABASE_KEY,
+              Authorization: `Bearer ${SUPABASE_KEY}`,
+              "Content-Type": "image/jpeg",
+              "x-upsert": "true",
+            },
+            body: new Uint8Array(imagenCorregida),
+          }
+        );
+
+        if (uploadResponse.ok) {
+          instagramImageUrl =
+            `${SUPABASE_URL}/storage/v1/object/public/product-images/${nombreArchivo}`;
+        } else {
+          console.error(
+            "ERROR SUBIENDO IMAGEN CORREGIDA:",
+            await uploadResponse.text()
+          );
+        }
+      }
+    }
+  }
+} catch (error) {
+  console.error("ERROR PREPARANDO IMAGEN PARA INSTAGRAM:", error);
+}
 
     // INSTAGRAM - CREAR CONTENEDOR
     const instagramBody = new URLSearchParams();
-    instagramBody.append("image_url", imageUrl);
+    instagramBody.append("image_url", instagramImageUrl);
     instagramBody.append("caption", texto);
     instagramBody.append("access_token", accessToken);
 
@@ -156,6 +209,32 @@ if (!listo) {
         { status: publishResponse.status }
       );
     }
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+if (productoId && supabaseUrl && supabaseKey) {
+  const registroResponse = await fetch(
+    `${supabaseUrl}/rest/v1/publicaciones_redes`,
+    {
+      method: "POST",
+      headers: {
+        apikey: supabaseKey,
+        Authorization: `Bearer ${supabaseKey}`,
+        "Content-Type": "application/json",
+        Prefer: "resolution=merge-duplicates,return=minimal",
+      },
+      body: JSON.stringify({
+        producto_id: String(productoId),
+        estado: "publicado",
+      }),
+    }
+  );
+
+  if (!registroResponse.ok) {
+    const registroError = await registroResponse.text();
+    console.error("ERROR REGISTRO SUPABASE:", registroError);
+  }
+}
 
     return NextResponse.json({
       ok: true,

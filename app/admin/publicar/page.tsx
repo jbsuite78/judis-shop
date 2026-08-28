@@ -72,15 +72,19 @@ const seleccionarProducto = (id: string) => {
         body: JSON.stringify({
           imageUrl,
           caption,
+          productoId: productoSeleccionado,
         }),
       });
 
       const data = await response.json();
 
       if (!response.ok || !data.ok) {
-        setMensaje("❌ No se pudo publicar.");
-        return;
-      }
+  console.error("ERROR API META:", data);
+  setMensaje(
+    `❌ No se pudo publicar. ${data?.platform ?? ""} ${data?.error?.error?.message ?? data?.error?.message ?? data?.error ?? ""}`
+  );
+  return;
+}
 
       setMensaje("✅ Publicado correctamente en Facebook e Instagram.");
       if (productoSeleccionado) {
