@@ -5,7 +5,15 @@ const PUBLICACIONES_TABLE = "publicaciones_redes";
 
 export async function GET(request: Request) {
   try {
+const authHeader = request.headers.get("authorization");
+    const cronSecret = process.env.CRON_SECRET;
 
+    if (!cronSecret || authHeader !== `Bearer ${cronSecret}`) {
+      return NextResponse.json(
+        { ok: false, error: "No autorizado" },
+        { status: 401 }
+      );
+    }
     const origin = new URL(request.url).origin;
 
     const response = await fetch(`${origin}/api/productos`, {

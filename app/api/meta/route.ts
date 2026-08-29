@@ -4,11 +4,58 @@ const GRAPH_VERSION = "v26.0";
 const GRAPH_URL = `https://graph.facebook.com/${GRAPH_VERSION}`;
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const SUPABASE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY!;
+async function convertirBase64AUrlPublica(dataUrl: string) {
+  if (!dataUrl.startsWith("data:image/")) return dataUrl;
 
+  const match = dataUrl.match(/^data:(image\/[a-zA-Z0-9.+-]+);base64,(.+)$/);
+
+  if (!match) {
+    throw new Error("Imagen base64 inválida");
+  }
+
+  const mimeType = match[1];
+  const contenidoBase64 = match[2];
+
+  const extension =
+    mimeType === "image/png"
+      ? "png"
+      : mimeType === "image/webp"
+      ? "webp"
+      : "jpg";
+
+  const buffer = Buffer.from(contenidoBase64, "base64");
+
+  const nombreArchivo = `redes/${Date.now()}-${Math.random()
+    .toString(36)
+    .slice(2)}.${extension}`;
+
+  const respuesta = await fetch(
+    `${SUPABASE_URL}/storage/v1/object/product-images/${nombreArchivo}`,
+    {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${SUPABASE_KEY}`,
+        apikey: SUPABASE_KEY,
+        "Content-Type": mimeType,
+        "x-upsert": "false",
+      },
+      body: buffer,
+    }
+  );
+
+  if (!respuesta.ok) {
+    const error = await respuesta.text();
+    throw new Error(`Error subiendo imagen a Supabase: ${error}`);
+  }
+
+  return `${SUPABASE_URL}/storage/v1/object/public/product-images/${nombreArchivo}`;
+}
 export async function POST(request: Request) {
   try {
    const { imageUrl, caption, productoId } = await request.json();
-let instagramImageUrl = imageUrl;
+
+const publicImageUrl = await convertirBase64AUrlPublica(imageUrl);
+let instagramImageUrl = publicImageUrl;
     const pageId = process.env.META_PAGE_ID;
     const instagramId = process.env.META_INSTAGRAM_ID;
     const accessToken = process.env.META_PAGE_ACCESS_TOKEN;
@@ -38,7 +85,7 @@ let instagramImageUrl = imageUrl;
 
     // FACEBOOK
     const facebookBody = new URLSearchParams();
-    facebookBody.append("url", imageUrl);
+  facebookBody.append("url", publicImageUrl);
     facebookBody.append("caption", texto);
     facebookBody.append("access_token", accessToken);
 
