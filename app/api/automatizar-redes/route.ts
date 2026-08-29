@@ -82,13 +82,18 @@ return NextResponse.json({
   productoPublicado: primerProducto,
   meta: metaData,
 });
-  } catch (error) {
-    return NextResponse.json(
-      {
-        ok: false,
-        error: "No se pudieron cargar los productos",
-      },
-      { status: 500 }
-    );
-  }
+ } catch (error) {
+  console.error("ERROR AUTOMATIZAR REDES:", error);
+
+  return NextResponse.json(
+    {
+      ok: false,
+      error:
+        error instanceof Error
+          ? error.message
+          : "Error desconocido en automatizar redes",
+    },
+    { status: 500 }
+  );
+}
 }
