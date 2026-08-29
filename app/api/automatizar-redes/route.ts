@@ -14,7 +14,7 @@ const authHeader = request.headers.get("authorization");
         { status: 401 }
       );
     }
-    const origin = new URL(request.url).origin;
+   const origin = "https://www.judisshop.com.mx";
 
     const response = await fetch(`${origin}/api/productos`, {
       cache: "no-store",
