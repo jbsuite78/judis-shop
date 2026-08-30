@@ -133,7 +133,9 @@ setCaption("");
   <option value="">Selecciona un producto</option>
 
  {productos.map((producto) => {
-  const yaPublicado = publicados.includes(String(producto.id));
+const yaPublicado =
+  publicados.includes(String(producto.id)) ||
+  publicados.includes(producto.nombre.trim().toLowerCase());
 
   return (
     <option
