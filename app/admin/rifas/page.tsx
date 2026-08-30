@@ -10,11 +10,13 @@ type Participante = {
 
 type Ganador = {
   participante: Participante;
-  lugar: number;
+  lugar: 1 | 2 | 3;
   premio: string;
 };
 
 type FacingMode = "user" | "environment";
+
+const ORDEN_LUGARES: Array<1 | 2 | 3> = [3, 2, 1];
 
 export default function RifasPage() {
   const [nombreRifa, setNombreRifa] = useState("");
@@ -24,10 +26,10 @@ export default function RifasPage() {
   const [oportunidades, setOportunidades] = useState(1);
   const [participantes, setParticipantes] = useState<Participante[]>([]);
 
-  const [sorteoActivo, setSorteoActivo] = useState(false);
-  const [cuenta, setCuenta] = useState(5);
-  const [girando, setGirando] = useState(false);
+  const [estudioActivo, setEstudioActivo] = useState(false);
   const [ganadores, setGanadores] = useState<Ganador[]>([]);
+  const [ganadorRevelado, setGanadorRevelado] = useState<Ganador | null>(null);
+  const [revelando, setRevelando] = useState(false);
 
   // Cámara
   const videoRef = useRef<HTMLVideoElement | null>(null);
@@ -47,12 +49,25 @@ export default function RifasPage() {
     [participantes]
   );
 
-  const premiosActivos = premios
-    .map((premio, indice) => ({
-      lugar: indice + 1,
-      premio: premio.trim(),
-    }))
-    .filter((item) => item.premio !== "");
+  // Bolitas visuales de la tómbola
+  const bolitas = useMemo(() => {
+    const cantidad = Math.max(16, Math.min(32, totalBoletos || 20));
+
+    return Array.from({ length: cantidad }, (_, indice) => ({
+      numero: indice + 1,
+      left: `${10 + ((indice * 37) % 75)}%`,
+      top: `${10 + ((indice * 53) % 75)}%`,
+      duracion: `${0.55 + (indice % 5) * 0.08}s`,
+      retraso: `${(indice % 7) * 0.08}s`,
+    }));
+  }, [totalBoletos]);
+
+  const todosLosPremiosListos =
+    premios[0].trim() !== "" &&
+    premios[1].trim() !== "" &&
+    premios[2].trim() !== "";
+
+  const siguienteLugar = ORDEN_LUGARES[ganadores.length];
 
   const cambiarPremio = (indice: number, valor: string) => {
     setPremios((actuales) =>
@@ -87,7 +102,7 @@ export default function RifasPage() {
   const esperar = (ms: number) =>
     new Promise((resolve) => setTimeout(resolve, ms));
 
-  const elegirUnGanador = (
+  const elegirGanadorPonderado = (
     disponibles: Participante[]
   ): Participante | null => {
     const boletos: Participante[] = [];
@@ -105,55 +120,58 @@ export default function RifasPage() {
     return boletos[indice];
   };
 
-  const elegirGanadores = () => {
-    let disponibles = [...participantes];
-    const resultados: Ganador[] = [];
+  const disponiblesParaSorteo = () => {
+    const idsGanadores = new Set(
+      ganadores.map((ganador) => ganador.participante.id)
+    );
 
-    for (const premioInfo of premiosActivos) {
-      const ganador = elegirUnGanador(disponibles);
-
-      if (!ganador) break;
-
-      resultados.push({
-        participante: ganador,
-        lugar: premioInfo.lugar,
-        premio: premioInfo.premio,
-      });
-
-      disponibles = disponibles.filter(
-        (participante) => participante.id !== ganador.id
-      );
-    }
-
-    return resultados;
+    return participantes.filter(
+      (participante) => !idsGanadores.has(participante.id)
+    );
   };
 
-  const iniciarSorteo = async () => {
+  const abrirEstudio = () => {
     if (
       !nombreRifa.trim() ||
-      premiosActivos.length === 0 ||
-      participantes.length < premiosActivos.length
+      !todosLosPremiosListos ||
+      participantes.length < 3
     ) {
       return;
     }
 
-    setSorteoActivo(true);
     setGanadores([]);
-    setGirando(true);
+    setGanadorRevelado(null);
+    setRevelando(false);
+    setEstudioActivo(true);
+  };
 
-    for (let numero = 5; numero >= 1; numero--) {
-      setCuenta(numero);
-      await esperar(1000);
+  const sacarSiguienteGanador = async () => {
+    if (!siguienteLugar || revelando) return;
+
+    setGanadorRevelado(null);
+    setRevelando(true);
+
+    // La tómbola sigue girando.
+    // El primer lugar tiene más suspenso.
+    await esperar(siguienteLugar === 1 ? 4000 : 2800);
+
+    const disponibles = disponiblesParaSorteo();
+    const participante = elegirGanadorPonderado(disponibles);
+
+    if (!participante) {
+      setRevelando(false);
+      return;
     }
 
-    setCuenta(0);
+    const nuevoGanador: Ganador = {
+      participante,
+      lugar: siguienteLugar,
+      premio: premios[siguienteLugar - 1].trim(),
+    };
 
-    await esperar(1500);
-
-    const resultados = elegirGanadores();
-
-    setGanadores(resultados);
-    setGirando(false);
+    setGanadores((actuales) => [...actuales, nuevoGanador]);
+    setGanadorRevelado(nuevoGanador);
+    setRevelando(false);
   };
 
   const iniciarCamara = async (modo: FacingMode = facingMode) => {
@@ -230,10 +248,18 @@ export default function RifasPage() {
     return "🥉";
   };
 
-  const salirSorteo = () => {
+  const textoLugar = (lugar: number) => {
+    if (lugar === 1) return "1.er lugar";
+    if (lugar === 2) return "2.º lugar";
+    return "3.er lugar";
+  };
+
+  const salirEstudio = () => {
     detenerCamara();
-    setSorteoActivo(false);
+    setEstudioActivo(false);
     setGanadores([]);
+    setGanadorRevelado(null);
+    setRevelando(false);
   };
 
   return (
@@ -245,10 +271,12 @@ export default function RifasPage() {
               Judi&apos;s Shop
             </p>
 
-            <h1 className="mt-2 text-4xl font-black">🎟️ Rifas en vivo</h1>
+            <h1 className="mt-2 text-4xl font-black">
+              🎟️ Rifas en vivo
+            </h1>
 
             <p className="mt-2 text-slate-600">
-              Crea la rifa, registra participantes y prepara el sorteo.
+              Cámara, tómbola y selección de ganadores en una sola pantalla.
             </p>
           </div>
 
@@ -287,7 +315,7 @@ export default function RifasPage() {
               <input
                 value={premios[1]}
                 onChange={(e) => cambiarPremio(1, e.target.value)}
-                placeholder="Opcional"
+                placeholder="Ej. Cartera Steve Madden"
                 className="mb-4 w-full rounded-xl border p-3"
               />
 
@@ -298,7 +326,7 @@ export default function RifasPage() {
               <input
                 value={premios[2]}
                 onChange={(e) => cambiarPremio(2, e.target.value)}
-                placeholder="Opcional"
+                placeholder="Ej. Perfume"
                 className="w-full rounded-xl border p-3"
               />
             </section>
@@ -308,7 +336,9 @@ export default function RifasPage() {
                 2. Agregar participante
               </h2>
 
-              <label className="mb-2 block font-semibold">Nombre</label>
+              <label className="mb-2 block font-semibold">
+                Nombre
+              </label>
 
               <input
                 value={nombreParticipante}
@@ -345,19 +375,22 @@ export default function RifasPage() {
           <section className="mt-6 rounded-3xl border bg-white p-6 shadow-sm">
             <div className="mb-5 flex flex-wrap items-center justify-between gap-4">
               <div>
-                <h2 className="text-2xl font-bold">3. Participantes</h2>
+                <h2 className="text-2xl font-bold">
+                  3. Participantes
+                </h2>
 
                 <p className="text-slate-500">
-                  {participantes.length} participantes · {totalBoletos} oportunidades
+                  {participantes.length} participantes ·{" "}
+                  {totalBoletos} oportunidades
                 </p>
               </div>
 
               <button
-                onClick={iniciarSorteo}
+                onClick={abrirEstudio}
                 disabled={
                   !nombreRifa.trim() ||
-                  premiosActivos.length === 0 ||
-                  participantes.length < premiosActivos.length
+                  !todosLosPremiosListos ||
+                  participantes.length < 3
                 }
                 className="rounded-xl bg-slate-950 px-6 py-3 font-bold text-white disabled:cursor-not-allowed disabled:opacity-40"
               >
@@ -390,7 +423,9 @@ export default function RifasPage() {
                     </div>
 
                     <button
-                      onClick={() => eliminarParticipante(participante.id)}
+                      onClick={() =>
+                        eliminarParticipante(participante.id)
+                      }
                       className="rounded-lg border px-3 py-2 text-sm font-semibold"
                     >
                       Eliminar
@@ -403,13 +438,13 @@ export default function RifasPage() {
         </div>
       </main>
 
-      {sorteoActivo && (
+      {estudioActivo && (
         <div className="fixed inset-0 z-[99999] overflow-y-auto bg-slate-950 text-white">
           <div className="mx-auto min-h-screen max-w-[1600px] p-3 md:p-6">
             <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
               <div>
                 <p className="font-black uppercase tracking-[0.3em] text-pink-400">
-                  🔴 Judi&apos;s Shop · Estudio en vivo
+                  🔴 Judi&apos;s Shop · Estudio de rifa
                 </p>
 
                 <h1 className="mt-1 text-2xl font-black md:text-4xl">
@@ -418,7 +453,7 @@ export default function RifasPage() {
               </div>
 
               <button
-                onClick={salirSorteo}
+                onClick={salirEstudio}
                 className="rounded-xl border border-white/30 px-4 py-2 font-bold"
               >
                 ✕ Salir
@@ -428,7 +463,7 @@ export default function RifasPage() {
             <div className="grid gap-4 md:grid-cols-2">
               {/* CÁMARA */}
               <section className="overflow-hidden rounded-3xl border border-white/10 bg-black">
-                <div className="relative aspect-video min-h-[260px] bg-black md:min-h-[500px]">
+                <div className="relative aspect-video min-h-[260px] bg-black md:min-h-[520px]">
                   <video
                     ref={videoRef}
                     autoPlay
@@ -462,7 +497,7 @@ export default function RifasPage() {
 
                   {camaraActiva && (
                     <div className="absolute left-3 top-3 rounded-full bg-red-600 px-4 py-2 text-sm font-black">
-                      🔴 EN VIVO
+                      ● CÁMARA ACTIVA
                     </div>
                   )}
                 </div>
@@ -497,69 +532,132 @@ export default function RifasPage() {
                 </div>
               </section>
 
-              {/* TÓMBOLA / SORTEO */}
-              <section className="flex min-h-[420px] flex-col items-center justify-center rounded-3xl border border-white/10 bg-slate-900 p-5 text-center md:min-h-[500px]">
+              {/* TÓMBOLA */}
+              <section className="flex min-h-[520px] flex-col items-center justify-center rounded-3xl border border-white/10 bg-slate-900 p-4 text-center">
                 <p className="text-sm font-bold uppercase tracking-[0.3em] text-pink-400">
                   🎟️ Tómbola Judi&apos;s
                 </p>
 
-                {girando && cuenta > 0 && (
-                  <>
-                    <p className="mt-6 text-xl font-bold">
-                      El sorteo comienza en...
-                    </p>
+                {/* Tambor */}
+                <div className="relative mt-5">
+                  <div className="relative h-[290px] w-[290px] overflow-hidden rounded-full border-[10px] border-pink-500/70 bg-slate-800/80 shadow-2xl md:h-[360px] md:w-[360px]">
+                    <div className="absolute inset-3 rounded-full border-4 border-white/20" />
 
-                    <div className="mt-5 text-[8rem] font-black leading-none text-pink-500 md:text-[12rem]">
-                      {cuenta}
-                    </div>
-                  </>
-                )}
-
-                {girando && cuenta === 0 && (
-                  <>
-                    <div className="animate-pulse text-4xl font-black md:text-6xl">
-                      🎟️
-                      <br />
-                      GIRANDO...
-                    </div>
-
-                    <div className="mt-8 flex max-w-xl flex-wrap justify-center gap-2">
-                      {participantes.slice(0, 18).map((participante) => (
-                        <span
-                          key={participante.id}
-                          className="animate-pulse rounded-full bg-white/10 px-3 py-2 text-sm"
+                    {/* Bolitas girando permanentemente */}
+                    <div
+                      className="absolute inset-5 animate-spin"
+                      style={{ animationDuration: "1.8s" }}
+                    >
+                      {bolitas.map((bola) => (
+                        <div
+                          key={bola.numero}
+                          className="absolute flex h-9 w-9 items-center justify-center rounded-full border-2 border-white bg-pink-500 text-xs font-black text-white shadow-lg md:h-11 md:w-11"
+                          style={{
+                            left: bola.left,
+                            top: bola.top,
+                            animation: `bounce ${bola.duracion} infinite`,
+                            animationDelay: bola.retraso,
+                          }}
                         >
-                          {participante.nombre}
-                        </span>
+                          {bola.numero}
+                        </div>
                       ))}
                     </div>
 
-                    <p className="mt-8 text-slate-400">
-                      {totalBoletos} oportunidades
-                    </p>
-                  </>
+                    <div className="pointer-events-none absolute inset-0 bg-gradient-to-br from-white/20 via-transparent to-black/30" />
+                  </div>
+
+                  {/* Base de la tómbola */}
+                  <div className="mx-auto h-16 w-5 bg-pink-500" />
+                  <div className="mx-auto h-5 w-44 rounded-full bg-pink-500" />
+                </div>
+
+                {/* Estado */}
+                <div className="mt-4 min-h-[125px] w-full">
+                  {revelando && (
+                    <div className="animate-pulse">
+                      <p className="text-xl font-black text-pink-400">
+                        🎰 SACANDO {textoLugar(siguienteLugar).toUpperCase()}...
+                      </p>
+
+                      <p className="mt-2 text-sm text-slate-400">
+                        La tómbola sigue girando
+                      </p>
+                    </div>
+                  )}
+
+                  {!revelando && ganadorRevelado && (
+                    <div className="rounded-2xl bg-white p-4 text-slate-950">
+                      <div className="text-4xl">
+                        {iconoLugar(ganadorRevelado.lugar)}
+                      </div>
+
+                      <p className="font-black text-pink-600">
+                        {textoLugar(ganadorRevelado.lugar)}
+                      </p>
+
+                      <p className="mt-1 text-3xl font-black">
+                        {ganadorRevelado.participante.nombre}
+                      </p>
+
+                      <p className="mt-2 text-sm text-slate-600">
+                        🎁 {ganadorRevelado.premio}
+                      </p>
+                    </div>
+                  )}
+                </div>
+
+                {/* Botón dinámico 3 → 2 → 1 */}
+                {ganadores.length < 3 && (
+                  <button
+                    onClick={sacarSiguienteGanador}
+                    disabled={revelando}
+                    className="mt-3 w-full max-w-md rounded-2xl bg-pink-600 px-6 py-4 text-xl font-black text-white disabled:opacity-50"
+                  >
+                    {revelando
+                      ? "🎰 Girando..."
+                      : siguienteLugar === 3
+                      ? "🥉 Sacar 3.er lugar"
+                      : siguienteLugar === 2
+                      ? "🥈 Sacar 2.º lugar"
+                      : "🥇 Sacar 1.er lugar"}
+                  </button>
                 )}
 
-                {!girando && ganadores.length > 0 && (
-                  <div className="w-full space-y-3">
-                    <p className="mb-4 text-3xl font-black">
-                      🎉 GANADORES 🎉
+                {ganadores.length === 3 && !revelando && (
+                  <div className="mt-4 w-full">
+                    <p className="text-3xl font-black text-pink-400">
+                      🎉 ¡RIFA FINALIZADA! 🎉
                     </p>
+                  </div>
+                )}
+              </section>
+            </div>
 
-                    {ganadores.map((ganador) => (
+            {/* RESULTADOS */}
+            {ganadores.length > 0 && (
+              <section className="mt-4 rounded-3xl border border-white/10 bg-slate-900 p-4">
+                <h2 className="mb-4 text-center text-xl font-black">
+                  🏆 Resultados
+                </h2>
+
+                <div className="grid gap-3 md:grid-cols-3">
+                  {[...ganadores]
+                    .sort((a, b) => a.lugar - b.lugar)
+                    .map((ganador) => (
                       <div
                         key={ganador.lugar}
-                        className="rounded-2xl bg-white p-4 text-slate-950"
+                        className="rounded-2xl bg-white p-4 text-center text-slate-950"
                       >
                         <div className="text-4xl">
                           {iconoLugar(ganador.lugar)}
                         </div>
 
                         <p className="font-black text-pink-600">
-                          {ganador.lugar}.º LUGAR
+                          {textoLugar(ganador.lugar)}
                         </p>
 
-                        <p className="mt-1 text-2xl font-black">
+                        <p className="mt-1 text-xl font-black">
                           {ganador.participante.nombre}
                         </p>
 
@@ -568,27 +666,17 @@ export default function RifasPage() {
                         </p>
                       </div>
                     ))}
-                  </div>
-                )}
+                </div>
               </section>
-            </div>
+            )}
 
-            <div className="mt-4 flex flex-wrap justify-center gap-3">
+            <div className="mt-4 flex justify-center">
               <button
                 onClick={pantallaCompleta}
                 className="rounded-xl bg-pink-600 px-5 py-3 font-bold"
               >
                 ⛶ Pantalla completa
               </button>
-
-              {!girando && ganadores.length > 0 && (
-                <button
-                  onClick={iniciarSorteo}
-                  className="rounded-xl bg-white px-5 py-3 font-bold text-slate-950"
-                >
-                  🔄 Nueva ronda
-                </button>
-              )}
             </div>
           </div>
         </div>
