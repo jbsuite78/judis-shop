@@ -28,7 +28,8 @@ export default function RifasPage() {
 
   const [estudioActivo, setEstudioActivo] = useState(false);
   const [ganadores, setGanadores] = useState<Ganador[]>([]);
-  const [ganadorRevelado, setGanadorRevelado] = useState<Ganador | null>(null);
+  const [ganadorRevelado, setGanadorRevelado] =
+    useState<Ganador | null>(null);
   const [revelando, setRevelando] = useState(false);
 
   // Cámara
@@ -37,30 +38,19 @@ export default function RifasPage() {
 
   const [camaraActiva, setCamaraActiva] = useState(false);
   const [microfonoActivo, setMicrofonoActivo] = useState(true);
-  const [facingMode, setFacingMode] = useState<FacingMode>("user");
+  const [facingMode, setFacingMode] =
+    useState<FacingMode>("user");
   const [errorCamara, setErrorCamara] = useState("");
 
   const totalBoletos = useMemo(
     () =>
       participantes.reduce(
-        (total, participante) => total + participante.oportunidades,
+        (total, participante) =>
+          total + participante.oportunidades,
         0
       ),
     [participantes]
   );
-
-  // Bolitas visuales de la tómbola
-  const bolitas = useMemo(() => {
-    const cantidad = Math.max(16, Math.min(32, totalBoletos || 20));
-
-    return Array.from({ length: cantidad }, (_, indice) => ({
-      numero: indice + 1,
-      left: `${10 + ((indice * 37) % 75)}%`,
-      top: `${10 + ((indice * 53) % 75)}%`,
-      duracion: `${0.55 + (indice % 5) * 0.08}s`,
-      retraso: `${(indice % 7) * 0.08}s`,
-    }));
-  }, [totalBoletos]);
 
   const todosLosPremiosListos =
     premios[0].trim() !== "" &&
@@ -69,23 +59,118 @@ export default function RifasPage() {
 
   const siguienteLugar = ORDEN_LUGARES[ganadores.length];
 
-  const cambiarPremio = (indice: number, valor: string) => {
+  // Participantes que todavía pueden ganar
+  const participantesDisponibles = useMemo(() => {
+    const idsGanadores = new Set(
+      ganadores.map(
+        (ganador) => ganador.participante.id
+      )
+    );
+
+    return participantes.filter(
+      (participante) =>
+        !idsGanadores.has(participante.id)
+    );
+  }, [participantes, ganadores]);
+
+  // Nombres que aparecen físicamente dentro de la tómbola.
+  // Más oportunidades = mayor presencia visual.
+  const nombresTombola = useMemo(() => {
+    const entradas: {
+      key: string;
+      nombre: string;
+    }[] = [];
+
+    participantesDisponibles.forEach(
+      (participante) => {
+        for (
+          let i = 0;
+          i < participante.oportunidades;
+          i++
+        ) {
+          entradas.push({
+            key: `${participante.id}-${i}`,
+            nombre: participante.nombre,
+          });
+        }
+      }
+    );
+
+    if (entradas.length === 0) return [];
+
+    const limite = 30;
+
+    const visibles =
+      entradas.length <= limite
+        ? entradas
+        : Array.from(
+            { length: limite },
+            (_, indice) =>
+              entradas[
+                Math.floor(
+                  (indice * entradas.length) /
+                    limite
+                )
+              ]
+          );
+
+    return visibles.map((entrada, indice) => {
+      const angulo = indice * 137.5;
+      const anillo = indice % 4;
+
+      const radio =
+        anillo === 0
+          ? 15
+          : anillo === 1
+          ? 25
+          : anillo === 2
+          ? 34
+          : 40;
+
+      const radianes =
+        (angulo * Math.PI) / 180;
+
+      return {
+        ...entrada,
+        left:
+          50 +
+          Math.cos(radianes) * radio,
+        top:
+          50 +
+          Math.sin(radianes) * radio,
+        delay: (indice % 8) * 0.1,
+      };
+    });
+  }, [participantesDisponibles]);
+
+  const cambiarPremio = (
+    indice: number,
+    valor: string
+  ) => {
     setPremios((actuales) =>
-      actuales.map((premio, i) => (i === indice ? valor : premio))
+      actuales.map((premio, i) =>
+        i === indice ? valor : premio
+      )
     );
   };
 
   const agregarParticipante = () => {
-    const nombre = nombreParticipante.trim();
+    const nombre =
+      nombreParticipante.trim();
 
     if (!nombre) return;
 
     setParticipantes((actuales) => [
       ...actuales,
       {
-        id: Date.now(),
+        id:
+          Date.now() +
+          Math.floor(Math.random() * 1000),
         nombre,
-        oportunidades: Math.max(1, oportunidades),
+        oportunidades: Math.max(
+          1,
+          oportunidades
+        ),
       },
     ]);
 
@@ -93,42 +178,46 @@ export default function RifasPage() {
     setOportunidades(1);
   };
 
-  const eliminarParticipante = (id: number) => {
+  const eliminarParticipante = (
+    id: number
+  ) => {
     setParticipantes((actuales) =>
-      actuales.filter((participante) => participante.id !== id)
+      actuales.filter(
+        (participante) =>
+          participante.id !== id
+      )
     );
   };
 
   const esperar = (ms: number) =>
-    new Promise((resolve) => setTimeout(resolve, ms));
-
-  const elegirGanadorPonderado = (
-    disponibles: Participante[]
-  ): Participante | null => {
-    const boletos: Participante[] = [];
-
-    disponibles.forEach((participante) => {
-      for (let i = 0; i < participante.oportunidades; i++) {
-        boletos.push(participante);
-      }
-    });
-
-    if (boletos.length === 0) return null;
-
-    const indice = Math.floor(Math.random() * boletos.length);
-
-    return boletos[indice];
-  };
-
-  const disponiblesParaSorteo = () => {
-    const idsGanadores = new Set(
-      ganadores.map((ganador) => ganador.participante.id)
+    new Promise((resolve) =>
+      setTimeout(resolve, ms)
     );
 
-    return participantes.filter(
-      (participante) => !idsGanadores.has(participante.id)
-    );
-  };
+  // Sorteo real ponderado
+ const elegirGanadorPonderado = (
+  disponibles: Participante[]
+): Participante | null => {
+  if (disponibles.length === 0) return null;
+
+  const totalOportunidades = disponibles.reduce(
+    (total, participante) =>
+      total + Math.max(1, participante.oportunidades),
+    0
+  );
+
+  let numeroAleatorio = Math.random() * totalOportunidades;
+
+  for (const participante of disponibles) {
+    numeroAleatorio -= Math.max(1, participante.oportunidades);
+
+    if (numeroAleatorio < 0) {
+      return participante;
+    }
+  }
+
+  return disponibles[disponibles.length - 1];
+};
 
   const abrirEstudio = () => {
     if (
@@ -145,54 +234,83 @@ export default function RifasPage() {
     setEstudioActivo(true);
   };
 
-  const sacarSiguienteGanador = async () => {
-    if (!siguienteLugar || revelando) return;
+  const sacarSiguienteGanador =
+    async () => {
+      if (
+        !siguienteLugar ||
+        revelando
+      ) {
+        return;
+      }
 
-    setGanadorRevelado(null);
-    setRevelando(true);
+      setGanadorRevelado(null);
+      setRevelando(true);
 
-    // La tómbola sigue girando.
-    // El primer lugar tiene más suspenso.
-    await esperar(siguienteLugar === 1 ? 4000 : 2800);
+      // El 1.er lugar tiene mayor suspenso.
+      const tiempoSuspenso =
+        siguienteLugar === 1
+          ? 4500
+          : 3000;
 
-    const disponibles = disponiblesParaSorteo();
-    const participante = elegirGanadorPonderado(disponibles);
+      await esperar(tiempoSuspenso);
 
-    if (!participante) {
+      const participante =
+        elegirGanadorPonderado(
+          participantesDisponibles
+        );
+
+      if (!participante) {
+        setRevelando(false);
+        return;
+      }
+
+      const nuevoGanador: Ganador = {
+        participante,
+        lugar: siguienteLugar,
+        premio:
+          premios[
+            siguienteLugar - 1
+          ].trim(),
+      };
+
+      setGanadores((actuales) => [
+        ...actuales,
+        nuevoGanador,
+      ]);
+
+      setGanadorRevelado(nuevoGanador);
       setRevelando(false);
-      return;
-    }
-
-    const nuevoGanador: Ganador = {
-      participante,
-      lugar: siguienteLugar,
-      premio: premios[siguienteLugar - 1].trim(),
     };
 
-    setGanadores((actuales) => [...actuales, nuevoGanador]);
-    setGanadorRevelado(nuevoGanador);
-    setRevelando(false);
-  };
-
-  const iniciarCamara = async (modo: FacingMode = facingMode) => {
+  const iniciarCamara = async (
+    modo: FacingMode = facingMode
+  ) => {
     try {
       setErrorCamara("");
 
-      streamRef.current?.getTracks().forEach((track) => track.stop());
+      streamRef.current
+        ?.getTracks()
+        .forEach((track) =>
+          track.stop()
+        );
 
-      const stream = await navigator.mediaDevices.getUserMedia({
-        video: {
-          facingMode: {
-            ideal: modo,
-          },
-        },
-        audio: true,
-      });
+      const stream =
+        await navigator.mediaDevices.getUserMedia(
+          {
+            video: {
+              facingMode: {
+                ideal: modo,
+              },
+            },
+            audio: true,
+          }
+        );
 
       streamRef.current = stream;
 
       if (videoRef.current) {
-        videoRef.current.srcObject = stream;
+        videoRef.current.srcObject =
+          stream;
       }
 
       setCamaraActiva(true);
@@ -207,11 +325,17 @@ export default function RifasPage() {
   };
 
   const detenerCamara = () => {
-    streamRef.current?.getTracks().forEach((track) => track.stop());
+    streamRef.current
+      ?.getTracks()
+      .forEach((track) =>
+        track.stop()
+      );
+
     streamRef.current = null;
 
     if (videoRef.current) {
-      videoRef.current.srcObject = null;
+      videoRef.current.srcObject =
+        null;
     }
 
     setCamaraActiva(false);
@@ -219,38 +343,56 @@ export default function RifasPage() {
 
   const cambiarCamara = async () => {
     const nueva: FacingMode =
-      facingMode === "user" ? "environment" : "user";
+      facingMode === "user"
+        ? "environment"
+        : "user";
 
     await iniciarCamara(nueva);
   };
 
   const alternarMicrofono = () => {
-    const tracks = streamRef.current?.getAudioTracks() ?? [];
+    const tracks =
+      streamRef.current?.getAudioTracks() ??
+      [];
 
     tracks.forEach((track) => {
-      track.enabled = !microfonoActivo;
+      track.enabled =
+        !microfonoActivo;
     });
 
-    setMicrofonoActivo((actual) => !actual);
+    setMicrofonoActivo(
+      (actual) => !actual
+    );
   };
 
-  const pantallaCompleta = async () => {
-    try {
-      if (!document.fullscreenElement) {
-        await document.documentElement.requestFullscreen();
-      }
-    } catch {}
-  };
+  const pantallaCompleta =
+    async () => {
+      try {
+        if (
+          !document.fullscreenElement
+        ) {
+          await document.documentElement.requestFullscreen();
+        }
+      } catch {}
+    };
 
-  const iconoLugar = (lugar: number) => {
+  const iconoLugar = (
+    lugar: number
+  ) => {
     if (lugar === 1) return "🥇";
     if (lugar === 2) return "🥈";
     return "🥉";
   };
 
-  const textoLugar = (lugar: number) => {
-    if (lugar === 1) return "1.er lugar";
-    if (lugar === 2) return "2.º lugar";
+  const textoLugar = (
+    lugar: number
+  ) => {
+    if (lugar === 1)
+      return "1.er lugar";
+
+    if (lugar === 2)
+      return "2.º lugar";
+
     return "3.er lugar";
   };
 
@@ -276,7 +418,7 @@ export default function RifasPage() {
             </h1>
 
             <p className="mt-2 text-slate-600">
-              Cámara, tómbola y selección de ganadores en una sola pantalla.
+              Cámara, tómbola y ganadores en una sola pantalla.
             </p>
           </div>
 
@@ -292,7 +434,11 @@ export default function RifasPage() {
 
               <input
                 value={nombreRifa}
-                onChange={(e) => setNombreRifa(e.target.value)}
+                onChange={(e) =>
+                  setNombreRifa(
+                    e.target.value
+                  )
+                }
                 placeholder="Ej. Rifa de la Independencia 🇲🇽"
                 className="mb-5 w-full rounded-xl border p-3"
               />
@@ -303,7 +449,12 @@ export default function RifasPage() {
 
               <input
                 value={premios[0]}
-                onChange={(e) => cambiarPremio(0, e.target.value)}
+                onChange={(e) =>
+                  cambiarPremio(
+                    0,
+                    e.target.value
+                  )
+                }
                 placeholder="Ej. Bolsa Guess"
                 className="mb-4 w-full rounded-xl border p-3"
               />
@@ -314,7 +465,12 @@ export default function RifasPage() {
 
               <input
                 value={premios[1]}
-                onChange={(e) => cambiarPremio(1, e.target.value)}
+                onChange={(e) =>
+                  cambiarPremio(
+                    1,
+                    e.target.value
+                  )
+                }
                 placeholder="Ej. Cartera Steve Madden"
                 className="mb-4 w-full rounded-xl border p-3"
               />
@@ -325,7 +481,12 @@ export default function RifasPage() {
 
               <input
                 value={premios[2]}
-                onChange={(e) => cambiarPremio(2, e.target.value)}
+                onChange={(e) =>
+                  cambiarPremio(
+                    2,
+                    e.target.value
+                  )
+                }
                 placeholder="Ej. Perfume"
                 className="w-full rounded-xl border p-3"
               />
@@ -341,8 +502,14 @@ export default function RifasPage() {
               </label>
 
               <input
-                value={nombreParticipante}
-                onChange={(e) => setNombreParticipante(e.target.value)}
+                value={
+                  nombreParticipante
+                }
+                onChange={(e) =>
+                  setNombreParticipante(
+                    e.target.value
+                  )
+                }
                 placeholder="Nombre del participante"
                 className="mb-5 w-full rounded-xl border p-3"
               />
@@ -357,14 +524,21 @@ export default function RifasPage() {
                 value={oportunidades}
                 onChange={(e) =>
                   setOportunidades(
-                    Math.max(1, Number(e.target.value))
+                    Math.max(
+                      1,
+                      Number(
+                        e.target.value
+                      )
+                    )
                   )
                 }
                 className="mb-5 w-full rounded-xl border p-3"
               />
 
               <button
-                onClick={agregarParticipante}
+                onClick={
+                  agregarParticipante
+                }
                 className="w-full rounded-xl bg-pink-600 px-5 py-3 font-bold text-white"
               >
                 + Agregar participante
@@ -380,8 +554,10 @@ export default function RifasPage() {
                 </h2>
 
                 <p className="text-slate-500">
-                  {participantes.length} participantes ·{" "}
-                  {totalBoletos} oportunidades
+                  {participantes.length}{" "}
+                  participantes ·{" "}
+                  {totalBoletos}{" "}
+                  oportunidades
                 </p>
               </div>
 
@@ -390,48 +566,68 @@ export default function RifasPage() {
                 disabled={
                   !nombreRifa.trim() ||
                   !todosLosPremiosListos ||
-                  participantes.length < 3
+                  participantes.length <
+                    3
                 }
                 className="rounded-xl bg-slate-950 px-6 py-3 font-bold text-white disabled:cursor-not-allowed disabled:opacity-40"
               >
-                🎬 Abrir estudio de rifa
+                🎬 Abrir estudio de
+                rifa
               </button>
             </div>
 
-            {participantes.length === 0 ? (
+            {participantes.length ===
+            0 ? (
               <div className="rounded-2xl border border-dashed p-10 text-center text-slate-500">
-                Todavía no hay participantes.
+                Todavía no hay
+                participantes.
               </div>
             ) : (
               <div className="space-y-3">
-                {participantes.map((participante, indice) => (
-                  <div
-                    key={participante.id}
-                    className="flex items-center justify-between rounded-2xl border p-4"
-                  >
-                    <div>
-                      <p className="font-bold">
-                        {indice + 1}. {participante.nombre}
-                      </p>
-
-                      <p className="text-sm text-slate-500">
-                        🎟️ {participante.oportunidades}{" "}
-                        {participante.oportunidades === 1
-                          ? "oportunidad"
-                          : "oportunidades"}
-                      </p>
-                    </div>
-
-                    <button
-                      onClick={() =>
-                        eliminarParticipante(participante.id)
+                {participantes.map(
+                  (
+                    participante,
+                    indice
+                  ) => (
+                    <div
+                      key={
+                        participante.id
                       }
-                      className="rounded-lg border px-3 py-2 text-sm font-semibold"
+                      className="flex items-center justify-between rounded-2xl border p-4"
                     >
-                      Eliminar
-                    </button>
-                  </div>
-                ))}
+                      <div>
+                        <p className="font-bold">
+                          {indice + 1}.{" "}
+                          {
+                            participante.nombre
+                          }
+                        </p>
+
+                        <p className="text-sm text-slate-500">
+                          🎟️{" "}
+                          {
+                            participante.oportunidades
+                          }{" "}
+                          {participante.oportunidades ===
+                          1
+                            ? "oportunidad"
+                            : "oportunidades"}
+                        </p>
+                      </div>
+
+                      <button
+                        onClick={() =>
+                          eliminarParticipante(
+                            participante.id
+                          )
+                        }
+                        className="rounded-lg border px-3 py-2 text-sm font-semibold"
+                      >
+                        Eliminar
+                      </button>
+                    </div>
+                  )
+                )}
               </div>
             )}
           </section>
@@ -444,7 +640,8 @@ export default function RifasPage() {
             <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
               <div>
                 <p className="font-black uppercase tracking-[0.3em] text-pink-400">
-                  🔴 Judi&apos;s Shop · Estudio de rifa
+                  🔴 Judi&apos;s Shop ·
+                  Estudio de rifa
                 </p>
 
                 <h1 className="mt-1 text-2xl font-black md:text-4xl">
@@ -453,7 +650,9 @@ export default function RifasPage() {
               </div>
 
               <button
-                onClick={salirEstudio}
+                onClick={
+                  salirEstudio
+                }
                 className="rounded-xl border border-white/30 px-4 py-2 font-bold"
               >
                 ✕ Salir
@@ -474,22 +673,30 @@ export default function RifasPage() {
 
                   {!camaraActiva && (
                     <div className="absolute inset-0 flex flex-col items-center justify-center p-6 text-center">
-                      <div className="text-7xl">🎥</div>
+                      <div className="text-7xl">
+                        🎥
+                      </div>
 
                       <h2 className="mt-4 text-2xl font-black">
-                        Cámara del conductor
+                        Cámara del
+                        conductor
                       </h2>
 
                       <button
-                        onClick={() => iniciarCamara()}
+                        onClick={() =>
+                          iniciarCamara()
+                        }
                         className="mt-6 rounded-xl bg-pink-600 px-6 py-3 font-bold"
                       >
-                        🎥 Activar cámara y micrófono
+                        🎥 Activar cámara
+                        y micrófono
                       </button>
 
                       {errorCamara && (
                         <p className="mt-4 max-w-md text-sm text-red-300">
-                          {errorCamara}
+                          {
+                            errorCamara
+                          }
                         </p>
                       )}
                     </div>
@@ -506,14 +713,18 @@ export default function RifasPage() {
                   {camaraActiva && (
                     <>
                       <button
-                        onClick={cambiarCamara}
+                        onClick={
+                          cambiarCamara
+                        }
                         className="rounded-xl bg-white/10 px-4 py-2 font-bold"
                       >
                         🔄 Cambiar cámara
                       </button>
 
                       <button
-                        onClick={alternarMicrofono}
+                        onClick={
+                          alternarMicrofono
+                        }
                         className="rounded-xl bg-white/10 px-4 py-2 font-bold"
                       >
                         {microfonoActivo
@@ -522,7 +733,9 @@ export default function RifasPage() {
                       </button>
 
                       <button
-                        onClick={detenerCamara}
+                        onClick={
+                          detenerCamara
+                        }
                         className="rounded-xl bg-white/10 px-4 py-2 font-bold"
                       >
                         ⏹ Cámara
@@ -532,110 +745,159 @@ export default function RifasPage() {
                 </div>
               </section>
 
-              {/* TÓMBOLA */}
+              {/* TÓMBOLA DE NOMBRES */}
               <section className="flex min-h-[520px] flex-col items-center justify-center rounded-3xl border border-white/10 bg-slate-900 p-4 text-center">
                 <p className="text-sm font-bold uppercase tracking-[0.3em] text-pink-400">
-                  🎟️ Tómbola Judi&apos;s
+                  🎟️ Tómbola
+                  Judi&apos;s
                 </p>
 
-                {/* Tambor */}
                 <div className="relative mt-5">
-                  <div className="relative h-[290px] w-[290px] overflow-hidden rounded-full border-[10px] border-pink-500/70 bg-slate-800/80 shadow-2xl md:h-[360px] md:w-[360px]">
+                  <div className="judis-drum relative h-[300px] w-[300px] overflow-hidden rounded-full border-[10px] border-pink-500/80 bg-gradient-to-br from-slate-700 via-slate-900 to-black shadow-2xl md:h-[390px] md:w-[390px]">
                     <div className="absolute inset-3 rounded-full border-4 border-white/20" />
 
-                    {/* Bolitas girando permanentemente */}
                     <div
-                      className="absolute inset-5 animate-spin"
-                      style={{ animationDuration: "1.8s" }}
+                      className={`judis-wheel absolute inset-5 ${
+                        revelando
+                          ? "judis-wheel-fast"
+                          : ""
+                      }`}
                     >
-                      {bolitas.map((bola) => (
-                        <div
-                          key={bola.numero}
-                          className="absolute flex h-9 w-9 items-center justify-center rounded-full border-2 border-white bg-pink-500 text-xs font-black text-white shadow-lg md:h-11 md:w-11"
-                          style={{
-                            left: bola.left,
-                            top: bola.top,
-                            animation: `bounce ${bola.duracion} infinite`,
-                            animationDelay: bola.retraso,
-                          }}
-                        >
-                          {bola.numero}
-                        </div>
-                      ))}
+                      {nombresTombola.map(
+                        (
+                          boleto,
+                          indice
+                        ) => (
+                          <div
+                            key={`${boleto.key}-${indice}`}
+                            className="absolute"
+                            style={{
+                              left: `${boleto.left}%`,
+                              top: `${boleto.top}%`,
+                            }}
+                          >
+                            <div
+                              className={`judis-name-counter ${
+                                revelando
+                                  ? "judis-name-counter-fast"
+                                  : ""
+                              }`}
+                            >
+                              <div
+                                className="judis-name-ball whitespace-nowrap rounded-full border-2 border-white/70 bg-pink-500 px-3 py-2 text-xs font-black text-white shadow-lg md:px-4 md:py-2.5 md:text-sm"
+                                style={{
+                                  animationDelay: `${boleto.delay}s`,
+                                }}
+                              >
+                                {
+                                  boleto.nombre
+                                }
+                              </div>
+                            </div>
+                          </div>
+                        )
+                      )}
                     </div>
 
                     <div className="pointer-events-none absolute inset-0 bg-gradient-to-br from-white/20 via-transparent to-black/30" />
+
+                    <div className="pointer-events-none absolute left-[14%] top-[10%] h-[35%] w-[18%] rotate-[25deg] rounded-full bg-white/10 blur-md" />
                   </div>
 
-                  {/* Base de la tómbola */}
                   <div className="mx-auto h-16 w-5 bg-pink-500" />
+
                   <div className="mx-auto h-5 w-44 rounded-full bg-pink-500" />
                 </div>
 
-                {/* Estado */}
-                <div className="mt-4 min-h-[125px] w-full">
+                <div className="mt-4 min-h-[135px] w-full">
                   {revelando && (
                     <div className="animate-pulse">
-                      <p className="text-xl font-black text-pink-400">
-                        🎰 SACANDO {textoLugar(siguienteLugar).toUpperCase()}...
+                      <p className="text-xl font-black text-pink-400 md:text-2xl">
+                        🎰 SACANDO{" "}
+                        {textoLugar(
+                          siguienteLugar
+                        ).toUpperCase()}
+                        ...
                       </p>
 
                       <p className="mt-2 text-sm text-slate-400">
-                        La tómbola sigue girando
+                        Los nombres siguen
+                        girando...
                       </p>
                     </div>
                   )}
 
-                  {!revelando && ganadorRevelado && (
-                    <div className="rounded-2xl bg-white p-4 text-slate-950">
-                      <div className="text-4xl">
-                        {iconoLugar(ganadorRevelado.lugar)}
+                  {!revelando &&
+                    ganadorRevelado && (
+                      <div className="mx-auto max-w-md rounded-2xl bg-white p-4 text-slate-950 shadow-2xl">
+                        <div className="text-5xl">
+                          {iconoLugar(
+                            ganadorRevelado.lugar
+                          )}
+                        </div>
+
+                        <p className="mt-2 font-black uppercase text-pink-600">
+                          {textoLugar(
+                            ganadorRevelado.lugar
+                          )}
+                        </p>
+
+                        <p className="mt-2 text-3xl font-black">
+                          {
+                            ganadorRevelado
+                              .participante
+                              .nombre
+                          }
+                        </p>
+
+                        <p className="mt-3 text-sm text-slate-600">
+                          🎁{" "}
+                          {
+                            ganadorRevelado.premio
+                          }
+                        </p>
                       </div>
-
-                      <p className="font-black text-pink-600">
-                        {textoLugar(ganadorRevelado.lugar)}
-                      </p>
-
-                      <p className="mt-1 text-3xl font-black">
-                        {ganadorRevelado.participante.nombre}
-                      </p>
-
-                      <p className="mt-2 text-sm text-slate-600">
-                        🎁 {ganadorRevelado.premio}
-                      </p>
-                    </div>
-                  )}
+                    )}
                 </div>
 
-                {/* Botón dinámico 3 → 2 → 1 */}
-                {ganadores.length < 3 && (
+                {ganadores.length <
+                  3 && (
                   <button
-                    onClick={sacarSiguienteGanador}
-                    disabled={revelando}
+                    onClick={
+                      sacarSiguienteGanador
+                    }
+                    disabled={
+                      revelando
+                    }
                     className="mt-3 w-full max-w-md rounded-2xl bg-pink-600 px-6 py-4 text-xl font-black text-white disabled:opacity-50"
                   >
                     {revelando
                       ? "🎰 Girando..."
-                      : siguienteLugar === 3
+                      : siguienteLugar ===
+                        3
                       ? "🥉 Sacar 3.er lugar"
-                      : siguienteLugar === 2
+                      : siguienteLugar ===
+                        2
                       ? "🥈 Sacar 2.º lugar"
                       : "🥇 Sacar 1.er lugar"}
                   </button>
                 )}
 
-                {ganadores.length === 3 && !revelando && (
-                  <div className="mt-4 w-full">
-                    <p className="text-3xl font-black text-pink-400">
-                      🎉 ¡RIFA FINALIZADA! 🎉
-                    </p>
-                  </div>
-                )}
+                {ganadores.length ===
+                  3 &&
+                  !revelando && (
+                    <div className="mt-4 w-full">
+                      <p className="text-3xl font-black text-pink-400">
+                        🎉 ¡RIFA
+                        FINALIZADA! 🎉
+                      </p>
+                    </div>
+                  )}
               </section>
             </div>
 
-            {/* RESULTADOS */}
-            {ganadores.length > 0 && (
+            {ganadores.length >
+              0 && (
               <section className="mt-4 rounded-3xl border border-white/10 bg-slate-900 p-4">
                 <h2 className="mb-4 text-center text-xl font-black">
                   🏆 Resultados
@@ -643,36 +905,57 @@ export default function RifasPage() {
 
                 <div className="grid gap-3 md:grid-cols-3">
                   {[...ganadores]
-                    .sort((a, b) => a.lugar - b.lugar)
-                    .map((ganador) => (
-                      <div
-                        key={ganador.lugar}
-                        className="rounded-2xl bg-white p-4 text-center text-slate-950"
-                      >
-                        <div className="text-4xl">
-                          {iconoLugar(ganador.lugar)}
+                    .sort(
+                      (a, b) =>
+                        a.lugar -
+                        b.lugar
+                    )
+                    .map(
+                      (ganador) => (
+                        <div
+                          key={
+                            ganador.lugar
+                          }
+                          className="rounded-2xl bg-white p-4 text-center text-slate-950"
+                        >
+                          <div className="text-4xl">
+                            {iconoLugar(
+                              ganador.lugar
+                            )}
+                          </div>
+
+                          <p className="font-black text-pink-600">
+                            {textoLugar(
+                              ganador.lugar
+                            )}
+                          </p>
+
+                          <p className="mt-1 text-xl font-black">
+                            {
+                              ganador
+                                .participante
+                                .nombre
+                            }
+                          </p>
+
+                          <p className="mt-2 text-sm text-slate-600">
+                            🎁{" "}
+                            {
+                              ganador.premio
+                            }
+                          </p>
                         </div>
-
-                        <p className="font-black text-pink-600">
-                          {textoLugar(ganador.lugar)}
-                        </p>
-
-                        <p className="mt-1 text-xl font-black">
-                          {ganador.participante.nombre}
-                        </p>
-
-                        <p className="mt-2 text-sm text-slate-600">
-                          🎁 {ganador.premio}
-                        </p>
-                      </div>
-                    ))}
+                      )
+                    )}
                 </div>
               </section>
             )}
 
             <div className="mt-4 flex justify-center">
               <button
-                onClick={pantallaCompleta}
+                onClick={
+                  pantallaCompleta
+                }
                 className="rounded-xl bg-pink-600 px-5 py-3 font-bold"
               >
                 ⛶ Pantalla completa
@@ -681,6 +964,80 @@ export default function RifasPage() {
           </div>
         </div>
       )}
+
+      <style jsx global>{`
+        @keyframes judisWheelSpin {
+          from {
+            transform: rotate(0deg);
+          }
+          to {
+            transform: rotate(360deg);
+          }
+        }
+
+        @keyframes judisCounterSpin {
+          from {
+            transform: translate(-50%, -50%)
+              rotate(0deg);
+          }
+          to {
+            transform: translate(-50%, -50%)
+              rotate(-360deg);
+          }
+        }
+
+        @keyframes judisNameBounce {
+          0%,
+          100% {
+            transform: translateY(0)
+              scale(1);
+          }
+          50% {
+            transform: translateY(-8px)
+              scale(1.05);
+          }
+        }
+
+        .judis-wheel {
+          animation: judisWheelSpin 5s linear
+            infinite;
+          transition: animation-duration 0.3s ease;
+        }
+
+        .judis-wheel-fast {
+          animation-duration: 1.25s;
+        }
+
+        .judis-name-counter {
+          animation: judisCounterSpin 5s linear
+            infinite;
+          transition: animation-duration 0.3s ease;
+        }
+
+        .judis-name-counter-fast {
+          animation-duration: 1.25s;
+        }
+
+        .judis-name-ball {
+          animation: judisNameBounce 0.9s
+            ease-in-out infinite;
+        }
+
+        .judis-drum {
+          box-shadow:
+            inset 0 0 35px rgba(255, 255, 255, 0.08),
+            inset 0 0 70px rgba(236, 72, 153, 0.08),
+            0 18px 45px rgba(0, 0, 0, 0.35);
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+          .judis-wheel,
+          .judis-name-counter,
+          .judis-name-ball {
+            animation-duration: 8s;
+          }
+        }
+      `}</style>
     </>
   );
 }
