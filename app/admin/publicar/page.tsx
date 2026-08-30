@@ -18,11 +18,22 @@ export default function PublicarPage() {
   const [productos, setProductos] = useState<Producto[]>([]);
 const [productoSeleccionado, setProductoSeleccionado] = useState("");
 const [publicados, setPublicados] = useState<string[]>([]);
-useEffect(() => {
-  const guardados = localStorage.getItem("productosPublicadosRedes");
-  if (guardados) {
-    setPublicados(JSON.parse(guardados));
-  }
+
+ useEffect(() => {
+  const cargarPublicados = async () => {
+    try {
+      const response = await fetch("/api/publicaciones-redes");
+      const data = await response.json();
+
+      if (Array.isArray(data)) {
+        setPublicados(data.map((item) => String(item.producto_id)));
+      }
+    } catch {
+      setPublicados([]);
+    }
+  };
+
+  cargarPublicados();
 }, []);
 
 useEffect(() => {
