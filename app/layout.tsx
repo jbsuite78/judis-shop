@@ -13,14 +13,36 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
+  metadataBase: new URL("https://www.judisshop.com.mx"),
+
   title: "Judi's Shop | Productos originales de Estados Unidos",
+
   description:
-    "Compra productos originales de Estados Unidos en Judi's Shop. Bolsas, perfumes, maquillaje, ropa y mucho más.",
-  manifest: "/manifest.webmanifest",
+    "Tienda oficial Judi's Shop. Bolsas, perfumes, maquillaje, ropa, calzado y productos originales de Estados Unidos.",
+
+  applicationName: "Judi's Shop",
+
+  alternates: {
+    canonical: "/",
+  },
+
+  openGraph: {
+    type: "website",
+    locale: "es_MX",
+    url: "/",
+    siteName: "Judi's Shop",
+    title: "Judi's Shop | Productos originales de Estados Unidos",
+    description:
+      "Tienda oficial Judi's Shop. Productos originales de Estados Unidos.",
+  },
+
   icons: {
     icon: "/icon-192.png",
     apple: "/icon-192.png",
   },
+
+  manifest: "/manifest.webmanifest",
+
   appleWebApp: {
     capable: true,
     title: "Judi's Shop",
