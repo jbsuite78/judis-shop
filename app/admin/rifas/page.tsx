@@ -8,9 +8,21 @@ type Participante = {
   oportunidades: number;
 };
 
+type Ganador = {
+  participante: Participante;
+  lugar: number;
+  premio: string;
+};
+
 export default function RifasPage() {
   const [nombreRifa, setNombreRifa] = useState("");
-  const [premio, setPremio] = useState("");
+
+  const [premios, setPremios] = useState([
+    "",
+    "",
+    "",
+  ]);
+
   const [nombreParticipante, setNombreParticipante] = useState("");
   const [oportunidades, setOportunidades] = useState(1);
   const [participantes, setParticipantes] = useState<Participante[]>([]);
@@ -18,7 +30,7 @@ export default function RifasPage() {
   const [sorteoActivo, setSorteoActivo] = useState(false);
   const [cuenta, setCuenta] = useState(5);
   const [girando, setGirando] = useState(false);
-  const [ganador, setGanador] = useState<Participante | null>(null);
+  const [ganadores, setGanadores] = useState<Ganador[]>([]);
 
   const totalBoletos = useMemo(
     () =>
@@ -28,6 +40,21 @@ export default function RifasPage() {
       ),
     [participantes]
   );
+
+  const premiosActivos = premios
+    .map((premio, indice) => ({
+      lugar: indice + 1,
+      premio: premio.trim(),
+    }))
+    .filter((item) => item.premio !== "");
+
+  const cambiarPremio = (indice: number, valor: string) => {
+    setPremios((actuales) =>
+      actuales.map((premio, i) =>
+        i === indice ? valor : premio
+      )
+    );
+  };
 
   const agregarParticipante = () => {
     const nombre = nombreParticipante.trim();
@@ -56,10 +83,12 @@ export default function RifasPage() {
   const esperar = (ms: number) =>
     new Promise((resolve) => setTimeout(resolve, ms));
 
-  const elegirGanador = () => {
+  const elegirUnGanador = (
+    disponibles: Participante[]
+  ): Participante | null => {
     const boletos: Participante[] = [];
 
-    participantes.forEach((participante) => {
+    disponibles.forEach((participante) => {
       for (let i = 0; i < participante.oportunidades; i++) {
         boletos.push(participante);
       }
@@ -72,17 +101,40 @@ export default function RifasPage() {
     return boletos[indice];
   };
 
+  const elegirGanadores = () => {
+    let disponibles = [...participantes];
+    const resultados: Ganador[] = [];
+
+    for (const premioInfo of premiosActivos) {
+      const ganador = elegirUnGanador(disponibles);
+
+      if (!ganador) break;
+
+      resultados.push({
+        participante: ganador,
+        lugar: premioInfo.lugar,
+        premio: premioInfo.premio,
+      });
+
+      disponibles = disponibles.filter(
+        (participante) => participante.id !== ganador.id
+      );
+    }
+
+    return resultados;
+  };
+
   const iniciarSorteo = async () => {
     if (
-      participantes.length < 2 ||
       !nombreRifa.trim() ||
-      !premio.trim()
+      premiosActivos.length === 0 ||
+      participantes.length < premiosActivos.length
     ) {
       return;
     }
 
     setSorteoActivo(true);
-    setGanador(null);
+    setGanadores([]);
     setGirando(true);
 
     for (let numero = 5; numero >= 1; numero--) {
@@ -92,11 +144,11 @@ export default function RifasPage() {
 
     setCuenta(0);
 
-    await esperar(1200);
+    await esperar(1500);
 
-    const resultado = elegirGanador();
+    const resultados = elegirGanadores();
 
-    setGanador(resultado);
+    setGanadores(resultados);
     setGirando(false);
   };
 
@@ -106,6 +158,12 @@ export default function RifasPage() {
         await document.documentElement.requestFullscreen();
       }
     } catch {}
+  };
+
+  const iconoLugar = (lugar: number) => {
+    if (lugar === 1) return "🥇";
+    if (lugar === 2) return "🥈";
+    return "🥉";
   };
 
   return (
@@ -144,13 +202,41 @@ export default function RifasPage() {
               />
 
               <label className="mb-2 block font-semibold">
-                Premio
+                🥇 Premio 1.er lugar
               </label>
 
               <input
-                value={premio}
-                onChange={(e) => setPremio(e.target.value)}
-                placeholder="Ej. Bolsa Guess + Perfume"
+                value={premios[0]}
+                onChange={(e) =>
+                  cambiarPremio(0, e.target.value)
+                }
+                placeholder="Ej. Bolsa Guess"
+                className="mb-4 w-full rounded-xl border p-3"
+              />
+
+              <label className="mb-2 block font-semibold">
+                🥈 Premio 2.º lugar
+              </label>
+
+              <input
+                value={premios[1]}
+                onChange={(e) =>
+                  cambiarPremio(1, e.target.value)
+                }
+                placeholder="Opcional"
+                className="mb-4 w-full rounded-xl border p-3"
+              />
+
+              <label className="mb-2 block font-semibold">
+                🥉 Premio 3.er lugar
+              </label>
+
+              <input
+                value={premios[2]}
+                onChange={(e) =>
+                  cambiarPremio(2, e.target.value)
+                }
+                placeholder="Opcional"
                 className="w-full rounded-xl border p-3"
               />
             </section>
@@ -166,7 +252,9 @@ export default function RifasPage() {
 
               <input
                 value={nombreParticipante}
-                onChange={(e) => setNombreParticipante(e.target.value)}
+                onChange={(e) =>
+                  setNombreParticipante(e.target.value)
+                }
                 placeholder="Nombre del participante"
                 className="mb-5 w-full rounded-xl border p-3"
               />
@@ -212,9 +300,9 @@ export default function RifasPage() {
               <button
                 onClick={iniciarSorteo}
                 disabled={
-                  participantes.length < 2 ||
                   !nombreRifa.trim() ||
-                  !premio.trim()
+                  premiosActivos.length === 0 ||
+                  participantes.length < premiosActivos.length
                 }
                 className="rounded-xl bg-slate-950 px-6 py-3 font-bold text-white disabled:cursor-not-allowed disabled:opacity-40"
               >
@@ -263,7 +351,7 @@ export default function RifasPage() {
       </main>
 
       {sorteoActivo && (
-        <div className="fixed inset-0 z-[99999] flex min-h-screen items-center justify-center bg-slate-950 p-6 text-white">
+        <div className="fixed inset-0 z-[99999] flex min-h-screen items-center justify-center overflow-y-auto bg-slate-950 p-6 text-white">
           <div className="w-full max-w-5xl text-center">
             <p className="mb-4 text-xl font-bold uppercase tracking-[0.35em] text-pink-400">
               Judi&apos;s Shop
@@ -272,10 +360,6 @@ export default function RifasPage() {
             <h1 className="text-4xl font-black md:text-6xl">
               {nombreRifa}
             </h1>
-
-            <p className="mt-4 text-xl text-slate-300 md:text-2xl">
-              🎁 Premio: {premio}
-            </p>
 
             {girando && cuenta > 0 && (
               <div className="my-12">
@@ -292,7 +376,7 @@ export default function RifasPage() {
             {girando && cuenta === 0 && (
               <div className="my-16">
                 <div className="animate-pulse text-5xl font-black md:text-7xl">
-                  🎟️ ELIGIENDO GANADOR...
+                  🎟️ ELIGIENDO GANADORES...
                 </div>
 
                 <p className="mt-8 text-2xl text-slate-300">
@@ -301,28 +385,43 @@ export default function RifasPage() {
               </div>
             )}
 
-            {!girando && ganador && (
-              <div className="my-10 rounded-[2rem] bg-white p-8 text-slate-950 shadow-2xl md:p-12">
-                <div className="text-6xl">🎉🏆🎉</div>
+            {!girando && ganadores.length > 0 && (
+              <div className="my-10 grid gap-5 md:grid-cols-3">
+                {ganadores.map((ganador) => (
+                  <div
+                    key={ganador.lugar}
+                    className="rounded-[2rem] bg-white p-7 text-slate-950 shadow-2xl"
+                  >
+                    <div className="text-6xl">
+                      {iconoLugar(ganador.lugar)}
+                    </div>
 
-                <p className="mt-5 text-2xl font-bold text-pink-600">
-                  ¡TENEMOS GANADOR!
-                </p>
+                    <p className="mt-4 text-xl font-black text-pink-600">
+                      {ganador.lugar}.º LUGAR
+                    </p>
 
-                <h2 className="mt-5 text-5xl font-black md:text-8xl">
-                  {ganador.nombre}
-                </h2>
+                    <h2 className="mt-4 text-3xl font-black md:text-4xl">
+                      {ganador.participante.nombre}
+                    </h2>
 
-                <p className="mt-6 text-xl text-slate-600">
-                  🎟️ Participó con {ganador.oportunidades}{" "}
-                  {ganador.oportunidades === 1
-                    ? "oportunidad"
-                    : "oportunidades"}
-                </p>
+                    <div className="my-5 border-t" />
 
-                <p className="mt-4 text-2xl font-bold">
-                  🎁 {premio}
-                </p>
+                    <p className="text-sm font-semibold uppercase text-slate-500">
+                      Premio
+                    </p>
+
+                    <p className="mt-2 text-xl font-bold">
+                      🎁 {ganador.premio}
+                    </p>
+
+                    <p className="mt-4 text-sm text-slate-500">
+                      🎟️ {ganador.participante.oportunidades}{" "}
+                      {ganador.participante.oportunidades === 1
+                        ? "oportunidad"
+                        : "oportunidades"}
+                    </p>
+                  </div>
+                ))}
               </div>
             )}
 
@@ -334,7 +433,7 @@ export default function RifasPage() {
                 ⛶ Pantalla completa
               </button>
 
-              {!girando && ganador && (
+              {!girando && ganadores.length > 0 && (
                 <button
                   onClick={iniciarSorteo}
                   className="rounded-xl bg-white px-6 py-3 font-bold text-slate-950"
@@ -346,7 +445,7 @@ export default function RifasPage() {
               <button
                 onClick={() => {
                   setSorteoActivo(false);
-                  setGanador(null);
+                  setGanadores([]);
                 }}
                 className="rounded-xl border border-white/30 px-6 py-3 font-bold"
               >
