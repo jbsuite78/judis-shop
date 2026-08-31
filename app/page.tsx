@@ -27,6 +27,16 @@ const categorias = [
   descripcion: "Ropa casual y deportiva para dama, caballero y niños.",
 },
 {
+  nombre: "Artículos para Caballero",
+  icono: "👔",
+  descripcion: "Accesorios y artículos seleccionados para caballero.",
+},
+{
+  nombre: "Joyería, Bisutería y Relojes",
+  icono: "💎",
+  descripcion: "Joyería, bisutería, accesorios y relojes para complementar tu estilo.",
+},
+{
   nombre: "Hogar",
   icono: "🏠",
   descripcion: "Artículos para cocina, decoración, recámara y más.",
