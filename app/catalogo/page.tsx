@@ -190,7 +190,11 @@ fetch("/api/productos", { method: "DELETE", headers: { "Content-Type": "applicat
     "Artículos de Temporada",
   ];
 
-  const existentes = productos.map((producto) => producto.categoria);
+  const existentes = productos.map((producto) =>
+  producto.categoria.startsWith("Artículos de Temporada")
+    ? "Artículos de Temporada"
+    : producto.categoria
+);
 
   return ["Todas", ...Array.from(new Set([...fijas, ...existentes])).sort()];
 }, [productos]);
