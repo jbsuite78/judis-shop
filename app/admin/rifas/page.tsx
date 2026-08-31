@@ -28,12 +28,9 @@ export default function RifasPage() {
   const [nombreRifa, setNombreRifa] = useState("");
   const [premios, setPremios] = useState(["", "", ""]);
 
-  const [nombreParticipante, setNombreParticipante] =
-    useState("");
+  const [nombreParticipante, setNombreParticipante] = useState("");
   const [oportunidades, setOportunidades] = useState(1);
-  const [participantes, setParticipantes] = useState<
-    Participante[]
-  >([]);
+  const [participantes, setParticipantes] = useState<Participante[]>([]);
 
   const [estudioActivo, setEstudioActivo] = useState(false);
   const [ganadores, setGanadores] = useState<Ganador[]>([]);
@@ -41,15 +38,12 @@ export default function RifasPage() {
     useState<Ganador | null>(null);
   const [revelando, setRevelando] = useState(false);
 
-  // Cámara
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
 
   const [camaraActiva, setCamaraActiva] = useState(false);
-  const [microfonoActivo, setMicrofonoActivo] =
-    useState(true);
-  const [facingMode, setFacingMode] =
-    useState<FacingMode>("user");
+  const [microfonoActivo, setMicrofonoActivo] = useState(true);
+  const [facingMode, setFacingMode] = useState<FacingMode>("user");
   const [errorCamara, setErrorCamara] = useState("");
 
   const totalBoletos = useMemo(
@@ -62,17 +56,31 @@ export default function RifasPage() {
     [participantes]
   );
 
-  // Permite 1, 2 o 3 premios.
-  // El orden siempre va del lugar menor al principal:
-  // 3 -> 2 -> 1, 2 -> 1 o únicamente 1.
   const premiosActivos = useMemo<Premio[]>(() => {
-    return premios
-      .map((premio, indice) => ({
-        lugar: (indice + 1) as 1 | 2 | 3,
-        premio: premio.trim(),
-      }))
-      .filter((item) => item.premio !== "")
-      .sort((a, b) => b.lugar - a.lugar);
+    const activos: Premio[] = [];
+
+    if (premios[0].trim()) {
+      activos.push({
+        lugar: 1,
+        premio: premios[0].trim(),
+      });
+    }
+
+    if (premios[1].trim()) {
+      activos.push({
+        lugar: 2,
+        premio: premios[1].trim(),
+      });
+    }
+
+    if (premios[2].trim()) {
+      activos.push({
+        lugar: 3,
+        premio: premios[2].trim(),
+      });
+    }
+
+    return activos.sort((a, b) => b.lugar - a.lugar);
   }, [premios]);
 
   const siguientePremio =
@@ -85,20 +93,14 @@ export default function RifasPage() {
 
   const participantesDisponibles = useMemo(() => {
     const idsGanadores = new Set(
-      ganadores.map(
-        (ganador) => ganador.participante.id
-      )
+      ganadores.map((ganador) => ganador.participante.id)
     );
 
     return participantes.filter(
-      (participante) =>
-        !idsGanadores.has(participante.id)
+      (participante) => !idsGanadores.has(participante.id)
     );
   }, [participantes, ganadores]);
 
-  // Visualmente mostramos una cantidad controlada para
-  // mantener fluidez incluso con 500+ participantes.
-  // El sorteo REAL sí considera a todos.
   const nombresVisuales = useMemo(() => {
     if (participantesDisponibles.length === 0) return [];
 
@@ -164,9 +166,7 @@ export default function RifasPage() {
     setParticipantes((actuales) => [
       ...actuales,
       {
-        id:
-          Date.now() +
-          Math.floor(Math.random() * 100000),
+        id: Date.now() + Math.floor(Math.random() * 100000),
         nombre,
         oportunidades: Math.max(1, oportunidades),
       },
@@ -187,8 +187,6 @@ export default function RifasPage() {
   const esperar = (ms: number) =>
     new Promise((resolve) => setTimeout(resolve, ms));
 
-  // Sorteo ponderado eficiente:
-  // funciona con cientos/miles de participantes y oportunidades.
   const elegirGanadorPonderado = (
     disponibles: Participante[]
   ): Participante | null => {
@@ -220,6 +218,7 @@ export default function RifasPage() {
   const abrirEstudio = () => {
     if (
       !nombreRifa.trim() ||
+      !premios[0].trim() ||
       premiosActivos.length === 0 ||
       participantes.length < premiosActivos.length
     ) {
@@ -238,7 +237,6 @@ export default function RifasPage() {
     setGanadorRevelado(null);
     setRevelando(true);
 
-    // Más suspenso para el 1.er lugar.
     const tiempo =
       siguientePremio.lugar === 1 ? 5000 : 3200;
 
@@ -284,6 +282,12 @@ export default function RifasPage() {
             facingMode: {
               ideal: modo,
             },
+            width: {
+              ideal: 1920,
+            },
+            height: {
+              ideal: 1080,
+            },
           },
           audio: true,
         });
@@ -299,6 +303,7 @@ export default function RifasPage() {
       setFacingMode(modo);
     } catch {
       setCamaraActiva(false);
+
       setErrorCamara(
         "No fue posible activar la cámara. Revisa los permisos del navegador."
       );
@@ -397,8 +402,7 @@ export default function RifasPage() {
             </h1>
 
             <p className="mt-2 text-slate-600">
-              Cámara, tómbola premium y ganadores en una sola
-              pantalla.
+              Cámara, tómbola y ganadores en una sola pantalla.
             </p>
           </div>
 
@@ -430,7 +434,7 @@ export default function RifasPage() {
                 onChange={(e) =>
                   cambiarPremio(0, e.target.value)
                 }
-                placeholder="Obligatorio para rifa de 1 premio"
+                placeholder="Premio principal"
                 className="mb-4 w-full rounded-xl border p-3"
               />
 
@@ -462,7 +466,7 @@ export default function RifasPage() {
 
               <p className="mt-4 text-sm text-slate-500">
                 {premiosActivos.length === 0
-                  ? "Agrega al menos un premio."
+                  ? "Agrega al menos el premio de 1.er lugar."
                   : premiosActivos.length === 1
                   ? "Se sorteará únicamente 1.er lugar."
                   : premiosActivos.length === 2
@@ -531,7 +535,7 @@ export default function RifasPage() {
                 onClick={abrirEstudio}
                 disabled={
                   !nombreRifa.trim() ||
-                  premiosActivos.length === 0 ||
+                  !premios[0].trim() ||
                   participantes.length < premiosActivos.length
                 }
                 className="rounded-xl bg-slate-950 px-6 py-3 font-bold text-white disabled:cursor-not-allowed disabled:opacity-40"
@@ -602,53 +606,67 @@ export default function RifasPage() {
               </button>
             </header>
 
-            <div className="grid gap-4 lg:grid-cols-[0.95fr_1.05fr]">
+            <div className="grid items-stretch gap-4 lg:grid-cols-2">
               {/* CÁMARA */}
-              <section className="overflow-hidden rounded-[2rem] border border-white/10 bg-black">
-                <div className="relative aspect-video min-h-[280px] bg-black lg:min-h-[610px]">
+              <section className="flex min-h-[620px] flex-col overflow-hidden rounded-[2rem] border border-white/10 bg-[#090b17]">
+                <div className="relative flex flex-1 items-center justify-center overflow-hidden bg-black">
                   <video
                     ref={videoRef}
                     autoPlay
                     playsInline
                     muted
-                    className="h-full w-full object-cover"
+                    className="absolute inset-0 h-full w-full object-cover object-center"
                   />
 
                   {!camaraActiva && (
-                    <div className="absolute inset-0 flex flex-col items-center justify-center p-6 text-center">
-                      <div className="text-7xl">🎥</div>
+                    <div className="absolute inset-0 z-10 flex items-center justify-center bg-[radial-gradient(circle_at_center,#151936_0%,#090b17_58%,#03040a_100%)]">
+                      <div className="flex w-full max-w-lg flex-col items-center justify-center px-6 text-center">
+                        <div className="text-7xl">
+                          🎥
+                        </div>
 
-                      <h2 className="mt-4 text-2xl font-black">
-                        Cámara del conductor
-                      </h2>
+                        <h2 className="mt-4 text-2xl font-black">
+                          Cámara del conductor
+                        </h2>
 
-                      <button
-                        onClick={() => iniciarCamara()}
-                        className="mt-6 rounded-2xl bg-pink-600 px-6 py-4 font-black"
-                      >
-                        🎥 Activar cámara y micrófono
-                      </button>
-
-                      {errorCamara && (
-                        <p className="mt-4 max-w-md text-sm text-red-300">
-                          {errorCamara}
+                        <p className="mt-2 text-sm text-slate-400">
+                          Tu imagen aparecerá centrada en este espacio.
                         </p>
-                      )}
+
+                        <button
+                          onClick={() => iniciarCamara()}
+                          className="mt-6 rounded-2xl bg-pink-600 px-7 py-4 font-black shadow-lg"
+                        >
+                          🎥 Activar cámara y micrófono
+                        </button>
+
+                        {errorCamara && (
+                          <p className="mt-4 max-w-md text-sm text-red-300">
+                            {errorCamara}
+                          </p>
+                        )}
+                      </div>
                     </div>
                   )}
 
                   {camaraActiva && (
                     <>
-                      <div className="absolute left-4 top-4 rounded-full bg-red-600 px-4 py-2 text-sm font-black shadow-lg">
+                      <div className="absolute left-4 top-4 z-20 rounded-full bg-red-600 px-4 py-2 text-sm font-black shadow-lg">
                         ● CÁMARA ACTIVA
                       </div>
 
-                      <div className="pointer-events-none absolute inset-0 border-[6px] border-white/5" />
+                      <div className="pointer-events-none absolute inset-0 z-10 border-[5px] border-white/[0.04]" />
                     </>
                   )}
                 </div>
 
-                <div className="flex flex-wrap justify-center gap-2 border-t border-white/10 p-3">
+                <div className="flex min-h-[72px] flex-wrap items-center justify-center gap-2 border-t border-white/10 bg-[#090b17] p-3">
+                  {!camaraActiva && (
+                    <span className="text-sm text-slate-500">
+                      Cámara lista para activarse
+                    </span>
+                  )}
+
                   {camaraActiva && (
                     <>
                       <button
@@ -678,7 +696,7 @@ export default function RifasPage() {
                 </div>
               </section>
 
-              {/* SHOW DE TÓMBOLA */}
+              {/* TÓMBOLA */}
               <section className="relative flex min-h-[620px] flex-col items-center overflow-hidden rounded-[2rem] border border-white/10 bg-[radial-gradient(circle_at_50%_30%,#24284c_0%,#0b0d1d_46%,#05060d_100%)] p-4 text-center">
                 <div className="absolute left-1/2 top-[-140px] h-[320px] w-[520px] -translate-x-1/2 rounded-full bg-pink-500/15 blur-[90px]" />
 
@@ -691,7 +709,6 @@ export default function RifasPage() {
                     revelando ? "premium-machine-active" : ""
                   }`}
                 >
-                  {/* Marco metálico */}
                   <div className="premium-top" />
 
                   <div className="premium-glass">
@@ -700,7 +717,9 @@ export default function RifasPage() {
 
                     <div
                       className={`premium-orbit ${
-                        revelando ? "premium-orbit-fast" : ""
+                        revelando
+                          ? "premium-orbit-fast"
+                          : ""
                       }`}
                     >
                       {nombresVisuales
@@ -737,7 +756,9 @@ export default function RifasPage() {
 
                     <div
                       className={`premium-orbit premium-orbit-reverse ${
-                        revelando ? "premium-orbit-fast-reverse" : ""
+                        revelando
+                          ? "premium-orbit-fast-reverse"
+                          : ""
                       }`}
                     >
                       {nombresVisuales
@@ -772,13 +793,13 @@ export default function RifasPage() {
                         })}
                     </div>
 
-                    {/* Efectos de cristal */}
                     <div className="premium-reflection-one" />
                     <div className="premium-reflection-two" />
                     <div className="premium-glow" />
                   </div>
 
                   <div className="premium-neck" />
+
                   <div className="premium-base">
                     <span>JUDI&apos;S SHOP</span>
                   </div>
@@ -788,7 +809,9 @@ export default function RifasPage() {
                   {revelando && siguientePremio && (
                     <div className="winner-loading">
                       <p className="text-xl font-black uppercase text-pink-400 md:text-2xl">
-                        {iconoLugar(siguientePremio.lugar)}{" "}
+                        {iconoLugar(
+                          siguientePremio.lugar
+                        )}{" "}
                         Buscando{" "}
                         {textoLugar(
                           siguientePremio.lugar
@@ -813,15 +836,22 @@ export default function RifasPage() {
                       }`}
                     >
                       <div className="text-5xl">
-                        {iconoLugar(ganadorRevelado.lugar)}
+                        {iconoLugar(
+                          ganadorRevelado.lugar
+                        )}
                       </div>
 
                       <p className="mt-2 font-black uppercase tracking-[0.15em] text-pink-600">
-                        {textoLugar(ganadorRevelado.lugar)}
+                        {textoLugar(
+                          ganadorRevelado.lugar
+                        )}
                       </p>
 
                       <p className="mt-2 text-3xl font-black md:text-4xl">
-                        {ganadorRevelado.participante.nombre}
+                        {
+                          ganadorRevelado.participante
+                            .nombre
+                        }
                       </p>
 
                       <p className="mt-3 text-base font-semibold text-slate-600">
@@ -852,8 +882,9 @@ export default function RifasPage() {
                 )}
 
                 <p className="relative z-20 mt-3 text-xs text-slate-500">
-                  {participantesDisponibles.length} participantes
-                  disponibles · {totalBoletos} oportunidades totales
+                  {participantesDisponibles.length}{" "}
+                  participantes disponibles ·{" "}
+                  {totalBoletos} oportunidades totales
                 </p>
               </section>
             </div>
@@ -934,23 +965,23 @@ export default function RifasPage() {
 
         @keyframes counterClockwise {
           from {
-            transform: translate(-50%, -50%) rotate(0deg)
-              scale(var(--scale));
+            transform: translate(-50%, -50%)
+              rotate(0deg) scale(var(--scale));
           }
           to {
-            transform: translate(-50%, -50%) rotate(-360deg)
-              scale(var(--scale));
+            transform: translate(-50%, -50%)
+              rotate(-360deg) scale(var(--scale));
           }
         }
 
         @keyframes counterReverse {
           from {
-            transform: translate(-50%, -50%) rotate(-360deg)
-              scale(var(--scale));
+            transform: translate(-50%, -50%)
+              rotate(-360deg) scale(var(--scale));
           }
           to {
-            transform: translate(-50%, -50%) rotate(0deg)
-              scale(var(--scale));
+            transform: translate(-50%, -50%)
+              rotate(0deg) scale(var(--scale));
           }
         }
 
@@ -959,6 +990,7 @@ export default function RifasPage() {
           100% {
             margin-top: 0;
           }
+
           50% {
             margin-top: -10px;
           }
@@ -969,9 +1001,11 @@ export default function RifasPage() {
           100% {
             transform: rotate(0deg);
           }
+
           25% {
             transform: rotate(-0.8deg);
           }
+
           75% {
             transform: rotate(0.8deg);
           }
@@ -980,26 +1014,35 @@ export default function RifasPage() {
         @keyframes winnerReveal {
           0% {
             opacity: 0;
-            transform: translateY(-30px) scale(0.75);
+            transform: translateY(-30px)
+              scale(0.75);
           }
+
           65% {
-            transform: translateY(5px) scale(1.06);
+            transform: translateY(5px)
+              scale(1.06);
           }
+
           100% {
             opacity: 1;
-            transform: translateY(0) scale(1);
+            transform: translateY(0)
+              scale(1);
           }
         }
 
         @keyframes winnerFirst {
           0%,
           100% {
-            box-shadow: 0 0 25px rgba(236, 72, 153, 0.35);
+            box-shadow: 0 0 25px
+              rgba(236, 72, 153, 0.35);
           }
+
           50% {
             box-shadow:
-              0 0 45px rgba(236, 72, 153, 0.75),
-              0 0 80px rgba(217, 70, 239, 0.35);
+              0 0 45px
+                rgba(236, 72, 153, 0.75),
+              0 0 80px
+                rgba(217, 70, 239, 0.35);
           }
         }
 
@@ -1009,6 +1052,7 @@ export default function RifasPage() {
             transform: scale(0.7);
             opacity: 0.45;
           }
+
           50% {
             transform: scale(1.2);
             opacity: 1;
@@ -1021,7 +1065,8 @@ export default function RifasPage() {
         }
 
         .premium-machine-active {
-          animation: machineShake 0.18s ease-in-out infinite;
+          animation: machineShake 0.18s
+            ease-in-out infinite;
         }
 
         .premium-top {
@@ -1046,8 +1091,10 @@ export default function RifasPage() {
           width: 100%;
           aspect-ratio: 1 / 0.92;
           overflow: hidden;
-          border-radius: 48% 48% 44% 44% / 46% 46% 50% 50%;
-          border: 9px solid rgba(226, 232, 240, 0.75);
+          border-radius: 48% 48% 44% 44% /
+            46% 46% 50% 50%;
+          border: 9px solid
+            rgba(226, 232, 240, 0.75);
           background:
             radial-gradient(
               circle at 50% 45%,
@@ -1061,10 +1108,14 @@ export default function RifasPage() {
             ),
             rgba(13, 18, 40, 0.72);
           box-shadow:
-            inset 0 0 50px rgba(255, 255, 255, 0.08),
-            inset 0 -35px 60px rgba(0, 0, 0, 0.45),
-            0 25px 60px rgba(0, 0, 0, 0.5),
-            0 0 30px rgba(236, 72, 153, 0.13);
+            inset 0 0 50px
+              rgba(255, 255, 255, 0.08),
+            inset 0 -35px 60px
+              rgba(0, 0, 0, 0.45),
+            0 25px 60px
+              rgba(0, 0, 0, 0.5),
+            0 0 30px
+              rgba(236, 72, 153, 0.13);
           backdrop-filter: blur(5px);
         }
 
@@ -1076,18 +1127,21 @@ export default function RifasPage() {
 
         .premium-rim-one {
           inset: 4%;
-          border: 2px solid rgba(255, 255, 255, 0.13);
+          border: 2px solid
+            rgba(255, 255, 255, 0.13);
         }
 
         .premium-rim-two {
           inset: 9%;
-          border: 1px solid rgba(236, 72, 153, 0.2);
+          border: 1px solid
+            rgba(236, 72, 153, 0.2);
         }
 
         .premium-orbit {
           position: absolute;
           inset: 7%;
-          animation: orbitClockwise 6.5s linear infinite;
+          animation: orbitClockwise 6.5s
+            linear infinite;
         }
 
         .premium-orbit-reverse {
@@ -1108,11 +1162,13 @@ export default function RifasPage() {
         }
 
         .premium-counter {
-          animation: counterClockwise 6.5s linear infinite;
+          animation: counterClockwise 6.5s
+            linear infinite;
         }
 
         .premium-counter-reverse {
-          animation: counterReverse 8.5s linear infinite;
+          animation: counterReverse 8.5s
+            linear infinite;
         }
 
         .premium-counter-fast {
@@ -1131,7 +1187,8 @@ export default function RifasPage() {
           overflow: hidden;
           text-overflow: ellipsis;
           white-space: nowrap;
-          border: 1px solid rgba(255, 255, 255, 0.58);
+          border: 1px solid
+            rgba(255, 255, 255, 0.58);
           border-radius: 999px;
           padding: 8px 12px;
           background: linear-gradient(
@@ -1140,12 +1197,15 @@ export default function RifasPage() {
             rgba(190, 24, 93, 0.92)
           );
           box-shadow:
-            0 7px 18px rgba(0, 0, 0, 0.35),
-            inset 0 1px 0 rgba(255, 255, 255, 0.38);
+            0 7px 18px
+              rgba(0, 0, 0, 0.35),
+            inset 0 1px 0
+              rgba(255, 255, 255, 0.38);
           color: white;
           font-size: 12px;
           font-weight: 900;
-          animation: nameFloat 1.1s ease-in-out infinite;
+          animation: nameFloat 1.1s
+            ease-in-out infinite;
           animation-delay: var(--delay);
         }
 
@@ -1181,7 +1241,12 @@ export default function RifasPage() {
           width: 14%;
           height: 26%;
           border-radius: 50%;
-          background: rgba(255, 255, 255, 0.07);
+          background: rgba(
+            255,
+            255,
+            255,
+            0.07
+          );
           filter: blur(8px);
           pointer-events: none;
         }
@@ -1193,7 +1258,12 @@ export default function RifasPage() {
           bottom: -8%;
           height: 28%;
           border-radius: 50%;
-          background: rgba(236, 72, 153, 0.18);
+          background: rgba(
+            236,
+            72,
+            153,
+            0.18
+          );
           filter: blur(24px);
           pointer-events: none;
         }
@@ -1210,7 +1280,8 @@ export default function RifasPage() {
             #f8fafc,
             #64748b
           );
-          box-shadow: 0 8px 18px rgba(0, 0, 0, 0.35);
+          box-shadow: 0 8px 18px
+            rgba(0, 0, 0, 0.35);
         }
 
         .premium-base {
@@ -1231,17 +1302,31 @@ export default function RifasPage() {
           font-size: 11px;
           font-weight: 950;
           letter-spacing: 0.25em;
-          box-shadow: 0 16px 30px rgba(0, 0, 0, 0.42);
+          box-shadow: 0 16px 30px
+            rgba(0, 0, 0, 0.42);
         }
 
         .winner-reveal {
-          animation: winnerReveal 0.65s cubic-bezier(0.2, 0.9, 0.3, 1.25);
+          animation: winnerReveal 0.65s
+            cubic-bezier(
+              0.2,
+              0.9,
+              0.3,
+              1.25
+            );
         }
 
         .winner-first {
           animation:
-            winnerReveal 0.7s cubic-bezier(0.2, 0.9, 0.3, 1.25),
-            winnerFirst 1.5s ease-in-out infinite 0.7s;
+            winnerReveal 0.7s
+              cubic-bezier(
+                0.2,
+                0.9,
+                0.3,
+                1.25
+              ),
+            winnerFirst 1.5s ease-in-out
+              infinite 0.7s;
         }
 
         .loading-dot {
@@ -1249,7 +1334,8 @@ export default function RifasPage() {
           height: 13px;
           border-radius: 999px;
           background: #ec4899;
-          animation: dotPulse 0.8s ease-in-out infinite;
+          animation: dotPulse 0.8s
+            ease-in-out infinite;
         }
 
         .loading-dot:nth-child(2) {
