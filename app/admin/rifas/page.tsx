@@ -930,6 +930,12 @@ José García`}
                   ? "💾 Guardando rifa..."
                   : "🎬 Abrir estudio de rifa"}
               </button>
+              <a
+  href="/admin/rifas/historial"
+  className="mt-3 inline-flex rounded-xl border border-slate-300 bg-white px-6 py-3 font-bold text-slate-900"
+>
+  🏆 Historial de Rifas
+</a>
             </div>
 
             {mensajeRifa && !estudioActivo && (
