@@ -24,13 +24,24 @@ type Ganador = Premio & {
 
 type FacingMode = "user" | "environment";
 
+type RespuestaRifa = {
+  ok: boolean;
+  rifa?: {
+    id: number;
+  };
+  error?: string;
+};
+
 export default function RifasPage() {
   const [nombreRifa, setNombreRifa] = useState("");
   const [premios, setPremios] = useState(["", "", ""]);
 
-  const [nombreParticipante, setNombreParticipante] = useState("");
+  const [nombreParticipante, setNombreParticipante] =
+    useState("");
   const [oportunidades, setOportunidades] = useState(1);
-  const [participantes, setParticipantes] = useState<Participante[]>([]);
+  const [participantes, setParticipantes] = useState<
+    Participante[]
+  >([]);
 
   const [listaMasiva, setListaMasiva] = useState("");
   const [mensajeCarga, setMensajeCarga] = useState("");
@@ -41,12 +52,19 @@ export default function RifasPage() {
     useState<Ganador | null>(null);
   const [revelando, setRevelando] = useState(false);
 
+  // Guardado en Supabase
+  const [rifaId, setRifaId] = useState<number | null>(null);
+  const [guardandoRifa, setGuardandoRifa] = useState(false);
+  const [mensajeRifa, setMensajeRifa] = useState("");
+
+  // Cámara
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
 
   const [camaraActiva, setCamaraActiva] = useState(false);
   const [microfonoActivo, setMicrofonoActivo] = useState(true);
-  const [facingMode, setFacingMode] = useState<FacingMode>("user");
+  const [facingMode, setFacingMode] =
+    useState<FacingMode>("user");
   const [errorCamara, setErrorCamara] = useState("");
 
   const normalizarNombre = (nombre: string) =>
@@ -137,22 +155,12 @@ export default function RifasPage() {
       return {
         ...participante,
         visualKey: `${participante.id}-${indice}`,
-        left:
-          8 +
-          columna * 13 +
-          ((indice * 7) % 6),
-        top:
-          13 +
-          fila * 15 +
-          ((indice * 11) % 8),
+        left: 8 + columna * 13 + ((indice * 7) % 6),
+        top: 13 + fila * 15 + ((indice * 11) % 8),
         delay: -((indice * 0.17) % 3),
-        duration:
-          2.4 +
-          (indice % 7) * 0.16,
+        duration: 2.4 + (indice % 7) * 0.16,
         variante: indice % 4,
-        escala:
-          0.84 +
-          (indice % 5) * 0.045,
+        escala: 0.84 + (indice % 5) * 0.045,
       };
     });
   }, [participantesDisponibles]);
@@ -264,7 +272,6 @@ export default function RifasPage() {
       if (!nombre) continue;
 
       const clave = normalizarNombre(nombre);
-
       const existente = acumulados.get(clave);
 
       if (existente) {
@@ -321,12 +328,9 @@ export default function RifasPage() {
             id:
               Date.now() +
               indice +
-              Math.floor(
-                Math.random() * 100000
-              ),
+              Math.floor(Math.random() * 100000),
             nombre: nuevo.nombre,
-            oportunidades:
-              nuevo.oportunidades,
+            oportunidades: nuevo.oportunidades,
           });
         }
       });
@@ -344,8 +348,7 @@ export default function RifasPage() {
   const eliminarParticipante = (id: number) => {
     setParticipantes((actuales) =>
       actuales.filter(
-        (participante) =>
-          participante.id !== id
+        (participante) => participante.id !== id
       )
     );
   };
@@ -392,21 +395,71 @@ export default function RifasPage() {
     ];
   };
 
-  const abrirEstudio = () => {
+  // Guarda la rifa antes de abrir el estudio
+  const abrirEstudio = async () => {
     if (
       !nombreRifa.trim() ||
       !premios[0].trim() ||
       premiosActivos.length === 0 ||
       participantes.length <
-        premiosActivos.length
+        premiosActivos.length ||
+      guardandoRifa
     ) {
       return;
     }
 
-    setGanadores([]);
-    setGanadorRevelado(null);
-    setRevelando(false);
-    setEstudioActivo(true);
+    setGuardandoRifa(true);
+    setMensajeRifa("");
+
+    try {
+      const respuesta = await fetch("/api/rifas", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          nombre: nombreRifa.trim(),
+          premios: premiosActivos,
+          participantes,
+          ganadores: [],
+          total_participantes: participantes.length,
+          total_oportunidades: totalBoletos,
+          estado: "en_curso",
+          finalizada_at: null,
+        }),
+      });
+
+      const datos =
+        (await respuesta.json()) as RespuestaRifa;
+
+      if (
+        !respuesta.ok ||
+        !datos.ok ||
+        !datos.rifa?.id
+      ) {
+        throw new Error(
+          datos.error ||
+            "No fue posible guardar la rifa."
+        );
+      }
+
+      setRifaId(Number(datos.rifa.id));
+      setGanadores([]);
+      setGanadorRevelado(null);
+      setRevelando(false);
+      setMensajeRifa("✅ Rifa guardada.");
+      setEstudioActivo(true);
+    } catch (error) {
+      setMensajeRifa(
+        `❌ ${
+          error instanceof Error
+            ? error.message
+            : "No fue posible guardar la rifa."
+        }`
+      );
+    } finally {
+      setGuardandoRifa(false);
+    }
   };
 
   const sacarSiguienteGanador = async () => {
@@ -416,6 +469,7 @@ export default function RifasPage() {
 
     setGanadorRevelado(null);
     setRevelando(true);
+    setMensajeRifa("");
 
     const tiempo =
       siguientePremio.lugar === 1
@@ -440,12 +494,63 @@ export default function RifasPage() {
       premio: siguientePremio.premio,
     };
 
-    setGanadores((actuales) => [
-      ...actuales,
+    const nuevosGanadores = [
+      ...ganadores,
       nuevoGanador,
-    ]);
+    ];
 
+    const finalizada =
+      nuevosGanadores.length ===
+      premiosActivos.length;
+
+    setGanadores(nuevosGanadores);
     setGanadorRevelado(nuevoGanador);
+
+    if (rifaId) {
+      try {
+        const respuesta = await fetch("/api/rifas", {
+          method: "PATCH",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            id: rifaId,
+            ganadores: nuevosGanadores,
+            estado: finalizada
+              ? "finalizada"
+              : "en_curso",
+            finalizada_at: finalizada
+              ? new Date().toISOString()
+              : null,
+          }),
+        });
+
+        const datos =
+          (await respuesta.json()) as RespuestaRifa;
+
+        if (!respuesta.ok || !datos.ok) {
+          throw new Error(
+            datos.error ||
+              "No se pudo actualizar la rifa."
+          );
+        }
+
+        setMensajeRifa(
+          finalizada
+            ? "✅ Rifa finalizada y guardada."
+            : "✅ Ganador guardado."
+        );
+      } catch (error) {
+        setMensajeRifa(
+          `⚠️ ${
+            error instanceof Error
+              ? error.message
+              : "No se pudo guardar el resultado."
+          }`
+        );
+      }
+    }
+
     setRevelando(false);
   };
 
@@ -457,9 +562,7 @@ export default function RifasPage() {
 
       streamRef.current
         ?.getTracks()
-        .forEach((track) =>
-          track.stop()
-        );
+        .forEach((track) => track.stop());
 
       const stream =
         await navigator.mediaDevices.getUserMedia({
@@ -498,9 +601,7 @@ export default function RifasPage() {
   const detenerCamara = () => {
     streamRef.current
       ?.getTracks()
-      .forEach((track) =>
-        track.stop()
-      );
+      .forEach((track) => track.stop());
 
     streamRef.current = null;
 
@@ -583,6 +684,8 @@ export default function RifasPage() {
     setGanadores([]);
     setGanadorRevelado(null);
     setRevelando(false);
+    setRifaId(null);
+    setMensajeRifa("");
   };
 
   const rifaTerminada =
@@ -818,13 +921,22 @@ José García`}
                   !nombreRifa.trim() ||
                   !premios[0].trim() ||
                   participantes.length <
-                    premiosActivos.length
+                    premiosActivos.length ||
+                  guardandoRifa
                 }
                 className="rounded-xl bg-slate-950 px-6 py-3 font-bold text-white disabled:cursor-not-allowed disabled:opacity-40"
               >
-                🎬 Abrir estudio de rifa
+                {guardandoRifa
+                  ? "💾 Guardando rifa..."
+                  : "🎬 Abrir estudio de rifa"}
               </button>
             </div>
+
+            {mensajeRifa && !estudioActivo && (
+              <div className="mb-4 rounded-xl bg-slate-100 p-3 font-semibold">
+                {mensajeRifa}
+              </div>
+            )}
 
             {participantes.length === 0 ? (
               <div className="rounded-2xl border border-dashed p-10 text-center text-slate-500">
@@ -884,6 +996,12 @@ José García`}
                 <h1 className="mt-1 text-2xl font-black md:text-4xl">
                   {nombreRifa}
                 </h1>
+
+                {mensajeRifa && (
+                  <p className="mt-1 text-sm font-semibold text-emerald-300">
+                    {mensajeRifa}
+                  </p>
+                )}
               </div>
 
               <button
@@ -1489,9 +1607,6 @@ José García`}
           border: 1px solid rgba(255, 255, 255, 0.18);
           background: linear-gradient(180deg, #374151, #111827);
           padding: 7px 18px;
-          box-shadow:
-            0 8px 20px rgba(0, 0, 0, 0.45),
-            inset 0 1px 1px rgba(255, 255, 255, 0.3);
         }
 
         .machine-light-bar span {
@@ -1544,8 +1659,7 @@ José García`}
           box-shadow:
             inset 0 0 35px rgba(255, 255, 255, 0.1),
             inset 0 -30px 50px rgba(0, 0, 0, 0.55),
-            0 28px 45px rgba(0, 0, 0, 0.48),
-            0 0 25px rgba(236, 72, 153, 0.1);
+            0 28px 45px rgba(0, 0, 0, 0.48);
         }
 
         .drum-ribs {
@@ -1625,7 +1739,6 @@ José García`}
           transform: translate(-50%, -50%);
           border-radius: 50%;
           background: #ec4899;
-          box-shadow: 0 0 14px rgba(236, 72, 153, 0.75);
         }
 
         .balls-zone {
