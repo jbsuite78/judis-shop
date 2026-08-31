@@ -22,6 +22,7 @@ const categorias = [
   "Salud y Bienestar",
   "Ropa",
   "Artículos para Caballero",
+  "Joyería, Bisutería y Relojes",
   "Hogar",
   "Cómputo y Videojuegos",
   "Bebés",
