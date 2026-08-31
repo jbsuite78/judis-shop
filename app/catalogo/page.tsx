@@ -234,9 +234,14 @@ const marcas = useMemo(() => {
         producto.marca.toLowerCase().includes(texto) ||
         producto.categoria.toLowerCase().includes(texto);
 
-      const coincideCategoria =
-        categoriaSeleccionada === "Todas" ||
-        producto.categoria === categoriaSeleccionada;
+      const categoriaProducto =
+  producto.categoria.startsWith("Artículos de Temporada")
+    ? "Artículos de Temporada"
+    : producto.categoria;
+
+const coincideCategoria =
+  categoriaSeleccionada === "Todas" ||
+  categoriaProducto === categoriaSeleccionada;
 
       const coincideMarca =
         marcaSeleccionada === "Todas" ||
