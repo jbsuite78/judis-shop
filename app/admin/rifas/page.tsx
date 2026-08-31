@@ -1,6 +1,11 @@
 "use client";
 
-import { useMemo, useRef, useState } from "react";
+import {
+  useMemo,
+  useRef,
+  useState,
+  type CSSProperties,
+} from "react";
 
 type Participante = {
   id: number;
@@ -8,23 +13,27 @@ type Participante = {
   oportunidades: number;
 };
 
-type Ganador = {
-  participante: Participante;
+type Premio = {
   lugar: 1 | 2 | 3;
   premio: string;
 };
 
-type FacingMode = "user" | "environment";
+type Ganador = Premio & {
+  participante: Participante;
+};
 
-const ORDEN_LUGARES: Array<1 | 2 | 3> = [3, 2, 1];
+type FacingMode = "user" | "environment";
 
 export default function RifasPage() {
   const [nombreRifa, setNombreRifa] = useState("");
   const [premios, setPremios] = useState(["", "", ""]);
 
-  const [nombreParticipante, setNombreParticipante] = useState("");
+  const [nombreParticipante, setNombreParticipante] =
+    useState("");
   const [oportunidades, setOportunidades] = useState(1);
-  const [participantes, setParticipantes] = useState<Participante[]>([]);
+  const [participantes, setParticipantes] = useState<
+    Participante[]
+  >([]);
 
   const [estudioActivo, setEstudioActivo] = useState(false);
   const [ganadores, setGanadores] = useState<Ganador[]>([]);
@@ -37,7 +46,8 @@ export default function RifasPage() {
   const streamRef = useRef<MediaStream | null>(null);
 
   const [camaraActiva, setCamaraActiva] = useState(false);
-  const [microfonoActivo, setMicrofonoActivo] = useState(true);
+  const [microfonoActivo, setMicrofonoActivo] =
+    useState(true);
   const [facingMode, setFacingMode] =
     useState<FacingMode>("user");
   const [errorCamara, setErrorCamara] = useState("");
@@ -46,20 +56,33 @@ export default function RifasPage() {
     () =>
       participantes.reduce(
         (total, participante) =>
-          total + participante.oportunidades,
+          total + Math.max(1, participante.oportunidades),
         0
       ),
     [participantes]
   );
 
-  const todosLosPremiosListos =
-    premios[0].trim() !== "" &&
-    premios[1].trim() !== "" &&
-    premios[2].trim() !== "";
+  // Permite 1, 2 o 3 premios.
+  // El orden siempre va del lugar menor al principal:
+  // 3 -> 2 -> 1, 2 -> 1 o únicamente 1.
+  const premiosActivos = useMemo<Premio[]>(() => {
+    return premios
+      .map((premio, indice) => ({
+        lugar: (indice + 1) as 1 | 2 | 3,
+        premio: premio.trim(),
+      }))
+      .filter((item) => item.premio !== "")
+      .sort((a, b) => b.lugar - a.lugar);
+  }, [premios]);
 
-  const siguienteLugar = ORDEN_LUGARES[ganadores.length];
+  const siguientePremio =
+    premiosActivos.find(
+      (premio) =>
+        !ganadores.some(
+          (ganador) => ganador.lugar === premio.lugar
+        )
+    ) ?? null;
 
-  // Participantes que todavía pueden ganar
   const participantesDisponibles = useMemo(() => {
     const idsGanadores = new Set(
       ganadores.map(
@@ -73,80 +96,59 @@ export default function RifasPage() {
     );
   }, [participantes, ganadores]);
 
-  // Nombres que aparecen físicamente dentro de la tómbola.
-  // Más oportunidades = mayor presencia visual.
-  const nombresTombola = useMemo(() => {
-    const entradas: {
-      key: string;
-      nombre: string;
-    }[] = [];
+  // Visualmente mostramos una cantidad controlada para
+  // mantener fluidez incluso con 500+ participantes.
+  // El sorteo REAL sí considera a todos.
+  const nombresVisuales = useMemo(() => {
+    if (participantesDisponibles.length === 0) return [];
 
-    participantesDisponibles.forEach(
-      (participante) => {
-        for (
-          let i = 0;
-          i < participante.oportunidades;
-          i++
-        ) {
-          entradas.push({
-            key: `${participante.id}-${i}`,
-            nombre: participante.nombre,
+    const limite = 28;
+
+    const seleccionados =
+      participantesDisponibles.length <= limite
+        ? participantesDisponibles
+        : Array.from({ length: limite }, (_, indice) => {
+            const posicion = Math.floor(
+              (indice * participantesDisponibles.length) /
+                limite
+            );
+
+            return participantesDisponibles[posicion];
           });
-        }
-      }
-    );
 
-    if (entradas.length === 0) return [];
-
-    const limite = 30;
-
-    const visibles =
-      entradas.length <= limite
-        ? entradas
-        : Array.from(
-            { length: limite },
-            (_, indice) =>
-              entradas[
-                Math.floor(
-                  (indice * entradas.length) /
-                    limite
-                )
-              ]
-          );
-
-    return visibles.map((entrada, indice) => {
-      const angulo = indice * 137.5;
-      const anillo = indice % 4;
+    return seleccionados.map((participante, indice) => {
+      const angulo =
+        (indice * 360) / Math.max(1, seleccionados.length);
 
       const radio =
-        anillo === 0
-          ? 15
-          : anillo === 1
-          ? 25
-          : anillo === 2
-          ? 34
-          : 40;
+        indice % 3 === 0
+          ? 27
+          : indice % 3 === 1
+          ? 35
+          : 42;
 
-      const radianes =
-        (angulo * Math.PI) / 180;
+      const radianes = (angulo * Math.PI) / 180;
 
       return {
-        ...entrada,
-        left:
-          50 +
-          Math.cos(radianes) * radio,
-        top:
-          50 +
-          Math.sin(radianes) * radio,
-        delay: (indice % 8) * 0.1,
+        ...participante,
+        visualKey: `${participante.id}-${indice}`,
+        left: 50 + Math.cos(radianes) * radio,
+        top: 50 + Math.sin(radianes) * radio,
+        delay: (indice % 9) * 0.09,
+        escala:
+          indice % 4 === 0
+            ? 0.88
+            : indice % 4 === 1
+            ? 1
+            : indice % 4 === 2
+            ? 0.94
+            : 1.06,
+        capa: indice % 2,
       };
     });
   }, [participantesDisponibles]);
 
-  const cambiarPremio = (
-    indice: number,
-    valor: string
-  ) => {
+  const cambiarPremio = (indice: number, valor: string) => {
     setPremios((actuales) =>
       actuales.map((premio, i) =>
         i === indice ? valor : premio
@@ -155,8 +157,7 @@ export default function RifasPage() {
   };
 
   const agregarParticipante = () => {
-    const nombre =
-      nombreParticipante.trim();
+    const nombre = nombreParticipante.trim();
 
     if (!nombre) return;
 
@@ -165,12 +166,9 @@ export default function RifasPage() {
       {
         id:
           Date.now() +
-          Math.floor(Math.random() * 1000),
+          Math.floor(Math.random() * 100000),
         nombre,
-        oportunidades: Math.max(
-          1,
-          oportunidades
-        ),
+        oportunidades: Math.max(1, oportunidades),
       },
     ]);
 
@@ -178,52 +176,52 @@ export default function RifasPage() {
     setOportunidades(1);
   };
 
-  const eliminarParticipante = (
-    id: number
-  ) => {
+  const eliminarParticipante = (id: number) => {
     setParticipantes((actuales) =>
       actuales.filter(
-        (participante) =>
-          participante.id !== id
+        (participante) => participante.id !== id
       )
     );
   };
 
   const esperar = (ms: number) =>
-    new Promise((resolve) =>
-      setTimeout(resolve, ms)
+    new Promise((resolve) => setTimeout(resolve, ms));
+
+  // Sorteo ponderado eficiente:
+  // funciona con cientos/miles de participantes y oportunidades.
+  const elegirGanadorPonderado = (
+    disponibles: Participante[]
+  ): Participante | null => {
+    if (disponibles.length === 0) return null;
+
+    const totalOportunidades = disponibles.reduce(
+      (total, participante) =>
+        total + Math.max(1, participante.oportunidades),
+      0
     );
 
-  // Sorteo real ponderado
- const elegirGanadorPonderado = (
-  disponibles: Participante[]
-): Participante | null => {
-  if (disponibles.length === 0) return null;
+    let numeroAleatorio =
+      Math.random() * totalOportunidades;
 
-  const totalOportunidades = disponibles.reduce(
-    (total, participante) =>
-      total + Math.max(1, participante.oportunidades),
-    0
-  );
+    for (const participante of disponibles) {
+      numeroAleatorio -= Math.max(
+        1,
+        participante.oportunidades
+      );
 
-  let numeroAleatorio = Math.random() * totalOportunidades;
-
-  for (const participante of disponibles) {
-    numeroAleatorio -= Math.max(1, participante.oportunidades);
-
-    if (numeroAleatorio < 0) {
-      return participante;
+      if (numeroAleatorio < 0) {
+        return participante;
+      }
     }
-  }
 
-  return disponibles[disponibles.length - 1];
-};
+    return disponibles[disponibles.length - 1];
+  };
 
   const abrirEstudio = () => {
     if (
       !nombreRifa.trim() ||
-      !todosLosPremiosListos ||
-      participantes.length < 3
+      premiosActivos.length === 0 ||
+      participantes.length < premiosActivos.length
     ) {
       return;
     }
@@ -234,53 +232,41 @@ export default function RifasPage() {
     setEstudioActivo(true);
   };
 
-  const sacarSiguienteGanador =
-    async () => {
-      if (
-        !siguienteLugar ||
-        revelando
-      ) {
-        return;
-      }
+  const sacarSiguienteGanador = async () => {
+    if (!siguientePremio || revelando) return;
 
-      setGanadorRevelado(null);
-      setRevelando(true);
+    setGanadorRevelado(null);
+    setRevelando(true);
 
-      // El 1.er lugar tiene mayor suspenso.
-      const tiempoSuspenso =
-        siguienteLugar === 1
-          ? 4500
-          : 3000;
+    // Más suspenso para el 1.er lugar.
+    const tiempo =
+      siguientePremio.lugar === 1 ? 5000 : 3200;
 
-      await esperar(tiempoSuspenso);
+    await esperar(tiempo);
 
-      const participante =
-        elegirGanadorPonderado(
-          participantesDisponibles
-        );
+    const participante = elegirGanadorPonderado(
+      participantesDisponibles
+    );
 
-      if (!participante) {
-        setRevelando(false);
-        return;
-      }
-
-      const nuevoGanador: Ganador = {
-        participante,
-        lugar: siguienteLugar,
-        premio:
-          premios[
-            siguienteLugar - 1
-          ].trim(),
-      };
-
-      setGanadores((actuales) => [
-        ...actuales,
-        nuevoGanador,
-      ]);
-
-      setGanadorRevelado(nuevoGanador);
+    if (!participante) {
       setRevelando(false);
+      return;
+    }
+
+    const nuevoGanador: Ganador = {
+      participante,
+      lugar: siguientePremio.lugar,
+      premio: siguientePremio.premio,
     };
+
+    setGanadores((actuales) => [
+      ...actuales,
+      nuevoGanador,
+    ]);
+
+    setGanadorRevelado(nuevoGanador);
+    setRevelando(false);
+  };
 
   const iniciarCamara = async (
     modo: FacingMode = facingMode
@@ -290,27 +276,22 @@ export default function RifasPage() {
 
       streamRef.current
         ?.getTracks()
-        .forEach((track) =>
-          track.stop()
-        );
+        .forEach((track) => track.stop());
 
       const stream =
-        await navigator.mediaDevices.getUserMedia(
-          {
-            video: {
-              facingMode: {
-                ideal: modo,
-              },
+        await navigator.mediaDevices.getUserMedia({
+          video: {
+            facingMode: {
+              ideal: modo,
             },
-            audio: true,
-          }
-        );
+          },
+          audio: true,
+        });
 
       streamRef.current = stream;
 
       if (videoRef.current) {
-        videoRef.current.srcObject =
-          stream;
+        videoRef.current.srcObject = stream;
       }
 
       setCamaraActiva(true);
@@ -327,15 +308,12 @@ export default function RifasPage() {
   const detenerCamara = () => {
     streamRef.current
       ?.getTracks()
-      .forEach((track) =>
-        track.stop()
-      );
+      .forEach((track) => track.stop());
 
     streamRef.current = null;
 
     if (videoRef.current) {
-      videoRef.current.srcObject =
-        null;
+      videoRef.current.srcObject = null;
     }
 
     setCamaraActiva(false);
@@ -343,57 +321,54 @@ export default function RifasPage() {
 
   const cambiarCamara = async () => {
     const nueva: FacingMode =
-      facingMode === "user"
-        ? "environment"
-        : "user";
+      facingMode === "user" ? "environment" : "user";
 
     await iniciarCamara(nueva);
   };
 
   const alternarMicrofono = () => {
     const tracks =
-      streamRef.current?.getAudioTracks() ??
-      [];
+      streamRef.current?.getAudioTracks() ?? [];
 
     tracks.forEach((track) => {
-      track.enabled =
-        !microfonoActivo;
+      track.enabled = !microfonoActivo;
     });
 
-    setMicrofonoActivo(
-      (actual) => !actual
-    );
+    setMicrofonoActivo((actual) => !actual);
   };
 
-  const pantallaCompleta =
-    async () => {
-      try {
-        if (
-          !document.fullscreenElement
-        ) {
-          await document.documentElement.requestFullscreen();
-        }
-      } catch {}
-    };
+  const pantallaCompleta = async () => {
+    try {
+      if (!document.fullscreenElement) {
+        await document.documentElement.requestFullscreen();
+      }
+    } catch {}
+  };
 
-  const iconoLugar = (
-    lugar: number
-  ) => {
+  const iconoLugar = (lugar: number) => {
     if (lugar === 1) return "🥇";
     if (lugar === 2) return "🥈";
     return "🥉";
   };
 
-  const textoLugar = (
-    lugar: number
-  ) => {
-    if (lugar === 1)
-      return "1.er lugar";
-
-    if (lugar === 2)
-      return "2.º lugar";
-
+  const textoLugar = (lugar: number) => {
+    if (lugar === 1) return "1.er lugar";
+    if (lugar === 2) return "2.º lugar";
     return "3.er lugar";
+  };
+
+  const textoBoton = () => {
+    if (!siguientePremio) return "Rifa finalizada";
+
+    if (siguientePremio.lugar === 1) {
+      return "🥇 Sacar 1.er lugar";
+    }
+
+    if (siguientePremio.lugar === 2) {
+      return "🥈 Sacar 2.º lugar";
+    }
+
+    return "🥉 Sacar 3.er lugar";
   };
 
   const salirEstudio = () => {
@@ -403,6 +378,10 @@ export default function RifasPage() {
     setGanadorRevelado(null);
     setRevelando(false);
   };
+
+  const rifaTerminada =
+    premiosActivos.length > 0 &&
+    ganadores.length === premiosActivos.length;
 
   return (
     <>
@@ -418,7 +397,8 @@ export default function RifasPage() {
             </h1>
 
             <p className="mt-2 text-slate-600">
-              Cámara, tómbola y ganadores en una sola pantalla.
+              Cámara, tómbola premium y ganadores en una sola
+              pantalla.
             </p>
           </div>
 
@@ -435,9 +415,7 @@ export default function RifasPage() {
               <input
                 value={nombreRifa}
                 onChange={(e) =>
-                  setNombreRifa(
-                    e.target.value
-                  )
+                  setNombreRifa(e.target.value)
                 }
                 placeholder="Ej. Rifa de la Independencia 🇲🇽"
                 className="mb-5 w-full rounded-xl border p-3"
@@ -450,12 +428,9 @@ export default function RifasPage() {
               <input
                 value={premios[0]}
                 onChange={(e) =>
-                  cambiarPremio(
-                    0,
-                    e.target.value
-                  )
+                  cambiarPremio(0, e.target.value)
                 }
-                placeholder="Ej. Bolsa Guess"
+                placeholder="Obligatorio para rifa de 1 premio"
                 className="mb-4 w-full rounded-xl border p-3"
               />
 
@@ -466,12 +441,9 @@ export default function RifasPage() {
               <input
                 value={premios[1]}
                 onChange={(e) =>
-                  cambiarPremio(
-                    1,
-                    e.target.value
-                  )
+                  cambiarPremio(1, e.target.value)
                 }
-                placeholder="Ej. Cartera Steve Madden"
+                placeholder="Opcional"
                 className="mb-4 w-full rounded-xl border p-3"
               />
 
@@ -482,14 +454,21 @@ export default function RifasPage() {
               <input
                 value={premios[2]}
                 onChange={(e) =>
-                  cambiarPremio(
-                    2,
-                    e.target.value
-                  )
+                  cambiarPremio(2, e.target.value)
                 }
-                placeholder="Ej. Perfume"
+                placeholder="Opcional"
                 className="w-full rounded-xl border p-3"
               />
+
+              <p className="mt-4 text-sm text-slate-500">
+                {premiosActivos.length === 0
+                  ? "Agrega al menos un premio."
+                  : premiosActivos.length === 1
+                  ? "Se sorteará únicamente 1.er lugar."
+                  : premiosActivos.length === 2
+                  ? "Secuencia: 2.º lugar → 1.er lugar."
+                  : "Secuencia: 3.er lugar → 2.º lugar → 1.er lugar."}
+              </p>
             </section>
 
             <section className="rounded-3xl border bg-white p-6 shadow-sm">
@@ -502,13 +481,9 @@ export default function RifasPage() {
               </label>
 
               <input
-                value={
-                  nombreParticipante
-                }
+                value={nombreParticipante}
                 onChange={(e) =>
-                  setNombreParticipante(
-                    e.target.value
-                  )
+                  setNombreParticipante(e.target.value)
                 }
                 placeholder="Nombre del participante"
                 className="mb-5 w-full rounded-xl border p-3"
@@ -524,21 +499,14 @@ export default function RifasPage() {
                 value={oportunidades}
                 onChange={(e) =>
                   setOportunidades(
-                    Math.max(
-                      1,
-                      Number(
-                        e.target.value
-                      )
-                    )
+                    Math.max(1, Number(e.target.value))
                   )
                 }
                 className="mb-5 w-full rounded-xl border p-3"
               />
 
               <button
-                onClick={
-                  agregarParticipante
-                }
+                onClick={agregarParticipante}
                 className="w-full rounded-xl bg-pink-600 px-5 py-3 font-bold text-white"
               >
                 + Agregar participante
@@ -554,10 +522,8 @@ export default function RifasPage() {
                 </h2>
 
                 <p className="text-slate-500">
-                  {participantes.length}{" "}
-                  participantes ·{" "}
-                  {totalBoletos}{" "}
-                  oportunidades
+                  {participantes.length} participantes ·{" "}
+                  {totalBoletos} oportunidades
                 </p>
               </div>
 
@@ -565,69 +531,49 @@ export default function RifasPage() {
                 onClick={abrirEstudio}
                 disabled={
                   !nombreRifa.trim() ||
-                  !todosLosPremiosListos ||
-                  participantes.length <
-                    3
+                  premiosActivos.length === 0 ||
+                  participantes.length < premiosActivos.length
                 }
                 className="rounded-xl bg-slate-950 px-6 py-3 font-bold text-white disabled:cursor-not-allowed disabled:opacity-40"
               >
-                🎬 Abrir estudio de
-                rifa
+                🎬 Abrir estudio de rifa
               </button>
             </div>
 
-            {participantes.length ===
-            0 ? (
+            {participantes.length === 0 ? (
               <div className="rounded-2xl border border-dashed p-10 text-center text-slate-500">
-                Todavía no hay
-                participantes.
+                Todavía no hay participantes.
               </div>
             ) : (
               <div className="space-y-3">
-                {participantes.map(
-                  (
-                    participante,
-                    indice
-                  ) => (
-                    <div
-                      key={
-                        participante.id
-                      }
-                      className="flex items-center justify-between rounded-2xl border p-4"
-                    >
-                      <div>
-                        <p className="font-bold">
-                          {indice + 1}.{" "}
-                          {
-                            participante.nombre
-                          }
-                        </p>
+                {participantes.map((participante, indice) => (
+                  <div
+                    key={participante.id}
+                    className="flex items-center justify-between rounded-2xl border p-4"
+                  >
+                    <div>
+                      <p className="font-bold">
+                        {indice + 1}. {participante.nombre}
+                      </p>
 
-                        <p className="text-sm text-slate-500">
-                          🎟️{" "}
-                          {
-                            participante.oportunidades
-                          }{" "}
-                          {participante.oportunidades ===
-                          1
-                            ? "oportunidad"
-                            : "oportunidades"}
-                        </p>
-                      </div>
-
-                      <button
-                        onClick={() =>
-                          eliminarParticipante(
-                            participante.id
-                          )
-                        }
-                        className="rounded-lg border px-3 py-2 text-sm font-semibold"
-                      >
-                        Eliminar
-                      </button>
+                      <p className="text-sm text-slate-500">
+                        🎟️ {participante.oportunidades}{" "}
+                        {participante.oportunidades === 1
+                          ? "oportunidad"
+                          : "oportunidades"}
+                      </p>
                     </div>
-                  )
-                )}
+
+                    <button
+                      onClick={() =>
+                        eliminarParticipante(participante.id)
+                      }
+                      className="rounded-lg border px-3 py-2 text-sm font-semibold"
+                    >
+                      Eliminar
+                    </button>
+                  </div>
+                ))}
               </div>
             )}
           </section>
@@ -635,13 +581,12 @@ export default function RifasPage() {
       </main>
 
       {estudioActivo && (
-        <div className="fixed inset-0 z-[99999] overflow-y-auto bg-slate-950 text-white">
-          <div className="mx-auto min-h-screen max-w-[1600px] p-3 md:p-6">
-            <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+        <div className="fixed inset-0 z-[99999] overflow-y-auto bg-[#060814] text-white">
+          <div className="mx-auto min-h-screen max-w-[1700px] p-3 md:p-6">
+            <header className="mb-4 flex flex-wrap items-center justify-between gap-3">
               <div>
-                <p className="font-black uppercase tracking-[0.3em] text-pink-400">
-                  🔴 Judi&apos;s Shop ·
-                  Estudio de rifa
+                <p className="text-sm font-black uppercase tracking-[0.32em] text-pink-400">
+                  ✦ JUDI&apos;S SHOP · ESTUDIO DE RIFA
                 </p>
 
                 <h1 className="mt-1 text-2xl font-black md:text-4xl">
@@ -650,19 +595,17 @@ export default function RifasPage() {
               </div>
 
               <button
-                onClick={
-                  salirEstudio
-                }
-                className="rounded-xl border border-white/30 px-4 py-2 font-bold"
+                onClick={salirEstudio}
+                className="rounded-xl border border-white/20 bg-white/5 px-4 py-2 font-bold"
               >
                 ✕ Salir
               </button>
-            </div>
+            </header>
 
-            <div className="grid gap-4 md:grid-cols-2">
+            <div className="grid gap-4 lg:grid-cols-[0.95fr_1.05fr]">
               {/* CÁMARA */}
-              <section className="overflow-hidden rounded-3xl border border-white/10 bg-black">
-                <div className="relative aspect-video min-h-[260px] bg-black md:min-h-[520px]">
+              <section className="overflow-hidden rounded-[2rem] border border-white/10 bg-black">
+                <div className="relative aspect-video min-h-[280px] bg-black lg:min-h-[610px]">
                   <video
                     ref={videoRef}
                     autoPlay
@@ -673,58 +616,50 @@ export default function RifasPage() {
 
                   {!camaraActiva && (
                     <div className="absolute inset-0 flex flex-col items-center justify-center p-6 text-center">
-                      <div className="text-7xl">
-                        🎥
-                      </div>
+                      <div className="text-7xl">🎥</div>
 
                       <h2 className="mt-4 text-2xl font-black">
-                        Cámara del
-                        conductor
+                        Cámara del conductor
                       </h2>
 
                       <button
-                        onClick={() =>
-                          iniciarCamara()
-                        }
-                        className="mt-6 rounded-xl bg-pink-600 px-6 py-3 font-bold"
+                        onClick={() => iniciarCamara()}
+                        className="mt-6 rounded-2xl bg-pink-600 px-6 py-4 font-black"
                       >
-                        🎥 Activar cámara
-                        y micrófono
+                        🎥 Activar cámara y micrófono
                       </button>
 
                       {errorCamara && (
                         <p className="mt-4 max-w-md text-sm text-red-300">
-                          {
-                            errorCamara
-                          }
+                          {errorCamara}
                         </p>
                       )}
                     </div>
                   )}
 
                   {camaraActiva && (
-                    <div className="absolute left-3 top-3 rounded-full bg-red-600 px-4 py-2 text-sm font-black">
-                      ● CÁMARA ACTIVA
-                    </div>
+                    <>
+                      <div className="absolute left-4 top-4 rounded-full bg-red-600 px-4 py-2 text-sm font-black shadow-lg">
+                        ● CÁMARA ACTIVA
+                      </div>
+
+                      <div className="pointer-events-none absolute inset-0 border-[6px] border-white/5" />
+                    </>
                   )}
                 </div>
 
-                <div className="flex flex-wrap justify-center gap-2 p-3">
+                <div className="flex flex-wrap justify-center gap-2 border-t border-white/10 p-3">
                   {camaraActiva && (
                     <>
                       <button
-                        onClick={
-                          cambiarCamara
-                        }
+                        onClick={cambiarCamara}
                         className="rounded-xl bg-white/10 px-4 py-2 font-bold"
                       >
                         🔄 Cambiar cámara
                       </button>
 
                       <button
-                        onClick={
-                          alternarMicrofono
-                        }
+                        onClick={alternarMicrofono}
                         className="rounded-xl bg-white/10 px-4 py-2 font-bold"
                       >
                         {microfonoActivo
@@ -733,9 +668,7 @@ export default function RifasPage() {
                       </button>
 
                       <button
-                        onClick={
-                          detenerCamara
-                        }
+                        onClick={detenerCamara}
                         className="rounded-xl bg-white/10 px-4 py-2 font-bold"
                       >
                         ⏹ Cámara
@@ -745,217 +678,232 @@ export default function RifasPage() {
                 </div>
               </section>
 
-              {/* TÓMBOLA DE NOMBRES */}
-              <section className="flex min-h-[520px] flex-col items-center justify-center rounded-3xl border border-white/10 bg-slate-900 p-4 text-center">
-                <p className="text-sm font-bold uppercase tracking-[0.3em] text-pink-400">
-                  🎟️ Tómbola
-                  Judi&apos;s
+              {/* SHOW DE TÓMBOLA */}
+              <section className="relative flex min-h-[620px] flex-col items-center overflow-hidden rounded-[2rem] border border-white/10 bg-[radial-gradient(circle_at_50%_30%,#24284c_0%,#0b0d1d_46%,#05060d_100%)] p-4 text-center">
+                <div className="absolute left-1/2 top-[-140px] h-[320px] w-[520px] -translate-x-1/2 rounded-full bg-pink-500/15 blur-[90px]" />
+
+                <p className="relative z-10 text-xs font-black uppercase tracking-[0.38em] text-pink-400 md:text-sm">
+                  ✦ TÓMBOLA PREMIUM JUDI&apos;S ✦
                 </p>
 
-                <div className="relative mt-5">
-                  <div className="judis-drum relative h-[300px] w-[300px] overflow-hidden rounded-full border-[10px] border-pink-500/80 bg-gradient-to-br from-slate-700 via-slate-900 to-black shadow-2xl md:h-[390px] md:w-[390px]">
-                    <div className="absolute inset-3 rounded-full border-4 border-white/20" />
+                <div
+                  className={`premium-machine relative mt-4 ${
+                    revelando ? "premium-machine-active" : ""
+                  }`}
+                >
+                  {/* Marco metálico */}
+                  <div className="premium-top" />
+
+                  <div className="premium-glass">
+                    <div className="premium-rim premium-rim-one" />
+                    <div className="premium-rim premium-rim-two" />
 
                     <div
-                      className={`judis-wheel absolute inset-5 ${
-                        revelando
-                          ? "judis-wheel-fast"
-                          : ""
+                      className={`premium-orbit ${
+                        revelando ? "premium-orbit-fast" : ""
                       }`}
                     >
-                      {nombresTombola.map(
-                        (
-                          boleto,
-                          indice
-                        ) => (
-                          <div
-                            key={`${boleto.key}-${indice}`}
-                            className="absolute"
-                            style={{
-                              left: `${boleto.left}%`,
-                              top: `${boleto.top}%`,
-                            }}
-                          >
+                      {nombresVisuales
+                        .filter((item) => item.capa === 0)
+                        .map((item) => {
+                          const style = {
+                            left: `${item.left}%`,
+                            top: `${item.top}%`,
+                            "--scale": item.escala,
+                            "--delay": `${item.delay}s`,
+                          } as CSSProperties;
+
+                          return (
                             <div
-                              className={`judis-name-counter ${
-                                revelando
-                                  ? "judis-name-counter-fast"
-                                  : ""
-                              }`}
+                              key={item.visualKey}
+                              className="premium-name-wrap"
+                              style={style}
                             >
                               <div
-                                className="judis-name-ball whitespace-nowrap rounded-full border-2 border-white/70 bg-pink-500 px-3 py-2 text-xs font-black text-white shadow-lg md:px-4 md:py-2.5 md:text-sm"
-                                style={{
-                                  animationDelay: `${boleto.delay}s`,
-                                }}
+                                className={`premium-counter ${
+                                  revelando
+                                    ? "premium-counter-fast"
+                                    : ""
+                                }`}
                               >
-                                {
-                                  boleto.nombre
-                                }
+                                <span className="premium-name">
+                                  {item.nombre}
+                                </span>
                               </div>
                             </div>
-                          </div>
-                        )
-                      )}
+                          );
+                        })}
                     </div>
 
-                    <div className="pointer-events-none absolute inset-0 bg-gradient-to-br from-white/20 via-transparent to-black/30" />
+                    <div
+                      className={`premium-orbit premium-orbit-reverse ${
+                        revelando ? "premium-orbit-fast-reverse" : ""
+                      }`}
+                    >
+                      {nombresVisuales
+                        .filter((item) => item.capa === 1)
+                        .map((item) => {
+                          const style = {
+                            left: `${item.left}%`,
+                            top: `${item.top}%`,
+                            "--scale": item.escala,
+                            "--delay": `${item.delay}s`,
+                          } as CSSProperties;
 
-                    <div className="pointer-events-none absolute left-[14%] top-[10%] h-[35%] w-[18%] rotate-[25deg] rounded-full bg-white/10 blur-md" />
+                          return (
+                            <div
+                              key={item.visualKey}
+                              className="premium-name-wrap"
+                              style={style}
+                            >
+                              <div
+                                className={`premium-counter-reverse ${
+                                  revelando
+                                    ? "premium-counter-fast-reverse"
+                                    : ""
+                                }`}
+                              >
+                                <span className="premium-name premium-name-alt">
+                                  {item.nombre}
+                                </span>
+                              </div>
+                            </div>
+                          );
+                        })}
+                    </div>
+
+                    {/* Efectos de cristal */}
+                    <div className="premium-reflection-one" />
+                    <div className="premium-reflection-two" />
+                    <div className="premium-glow" />
                   </div>
 
-                  <div className="mx-auto h-16 w-5 bg-pink-500" />
-
-                  <div className="mx-auto h-5 w-44 rounded-full bg-pink-500" />
+                  <div className="premium-neck" />
+                  <div className="premium-base">
+                    <span>JUDI&apos;S SHOP</span>
+                  </div>
                 </div>
 
-                <div className="mt-4 min-h-[135px] w-full">
-                  {revelando && (
-                    <div className="animate-pulse">
-                      <p className="text-xl font-black text-pink-400 md:text-2xl">
-                        🎰 SACANDO{" "}
+                <div className="relative z-20 mt-3 min-h-[155px] w-full">
+                  {revelando && siguientePremio && (
+                    <div className="winner-loading">
+                      <p className="text-xl font-black uppercase text-pink-400 md:text-2xl">
+                        {iconoLugar(siguientePremio.lugar)}{" "}
+                        Buscando{" "}
                         {textoLugar(
-                          siguienteLugar
+                          siguientePremio.lugar
                         ).toUpperCase()}
                         ...
                       </p>
 
-                      <p className="mt-2 text-sm text-slate-400">
-                        Los nombres siguen
-                        girando...
-                      </p>
+                      <div className="mx-auto mt-4 flex w-fit gap-2">
+                        <span className="loading-dot" />
+                        <span className="loading-dot" />
+                        <span className="loading-dot" />
+                      </div>
                     </div>
                   )}
 
-                  {!revelando &&
-                    ganadorRevelado && (
-                      <div className="mx-auto max-w-md rounded-2xl bg-white p-4 text-slate-950 shadow-2xl">
-                        <div className="text-5xl">
-                          {iconoLugar(
-                            ganadorRevelado.lugar
-                          )}
-                        </div>
-
-                        <p className="mt-2 font-black uppercase text-pink-600">
-                          {textoLugar(
-                            ganadorRevelado.lugar
-                          )}
-                        </p>
-
-                        <p className="mt-2 text-3xl font-black">
-                          {
-                            ganadorRevelado
-                              .participante
-                              .nombre
-                          }
-                        </p>
-
-                        <p className="mt-3 text-sm text-slate-600">
-                          🎁{" "}
-                          {
-                            ganadorRevelado.premio
-                          }
-                        </p>
+                  {!revelando && ganadorRevelado && (
+                    <div
+                      className={`winner-reveal mx-auto max-w-lg rounded-[2rem] border border-pink-300/30 bg-white p-5 text-slate-950 shadow-2xl ${
+                        ganadorRevelado.lugar === 1
+                          ? "winner-first"
+                          : ""
+                      }`}
+                    >
+                      <div className="text-5xl">
+                        {iconoLugar(ganadorRevelado.lugar)}
                       </div>
-                    )}
+
+                      <p className="mt-2 font-black uppercase tracking-[0.15em] text-pink-600">
+                        {textoLugar(ganadorRevelado.lugar)}
+                      </p>
+
+                      <p className="mt-2 text-3xl font-black md:text-4xl">
+                        {ganadorRevelado.participante.nombre}
+                      </p>
+
+                      <p className="mt-3 text-base font-semibold text-slate-600">
+                        🎁 {ganadorRevelado.premio}
+                      </p>
+                    </div>
+                  )}
                 </div>
 
-                {ganadores.length <
-                  3 && (
+                {!rifaTerminada && siguientePremio && (
                   <button
-                    onClick={
-                      sacarSiguienteGanador
-                    }
-                    disabled={
-                      revelando
-                    }
-                    className="mt-3 w-full max-w-md rounded-2xl bg-pink-600 px-6 py-4 text-xl font-black text-white disabled:opacity-50"
+                    onClick={sacarSiguienteGanador}
+                    disabled={revelando}
+                    className="relative z-20 mt-2 w-full max-w-md rounded-2xl bg-gradient-to-r from-pink-600 to-fuchsia-600 px-6 py-4 text-xl font-black shadow-xl transition disabled:opacity-50"
                   >
                     {revelando
-                      ? "🎰 Girando..."
-                      : siguienteLugar ===
-                        3
-                      ? "🥉 Sacar 3.er lugar"
-                      : siguienteLugar ===
-                        2
-                      ? "🥈 Sacar 2.º lugar"
-                      : "🥇 Sacar 1.er lugar"}
+                      ? "🎰 Tómbola girando..."
+                      : textoBoton()}
                   </button>
                 )}
 
-                {ganadores.length ===
-                  3 &&
-                  !revelando && (
-                    <div className="mt-4 w-full">
-                      <p className="text-3xl font-black text-pink-400">
-                        🎉 ¡RIFA
-                        FINALIZADA! 🎉
-                      </p>
-                    </div>
-                  )}
+                {rifaTerminada && !revelando && (
+                  <div className="relative z-20 mt-3">
+                    <p className="text-3xl font-black text-pink-400">
+                      🎉 ¡RIFA FINALIZADA! 🎉
+                    </p>
+                  </div>
+                )}
+
+                <p className="relative z-20 mt-3 text-xs text-slate-500">
+                  {participantesDisponibles.length} participantes
+                  disponibles · {totalBoletos} oportunidades totales
+                </p>
               </section>
             </div>
 
-            {ganadores.length >
-              0 && (
-              <section className="mt-4 rounded-3xl border border-white/10 bg-slate-900 p-4">
+            {ganadores.length > 0 && (
+              <section className="mt-4 rounded-[2rem] border border-white/10 bg-white/[0.04] p-4">
                 <h2 className="mb-4 text-center text-xl font-black">
-                  🏆 Resultados
+                  🏆 Resultados de la rifa
                 </h2>
 
-                <div className="grid gap-3 md:grid-cols-3">
+                <div
+                  className={`grid gap-3 ${
+                    premiosActivos.length === 1
+                      ? "mx-auto max-w-md"
+                      : premiosActivos.length === 2
+                      ? "md:grid-cols-2"
+                      : "md:grid-cols-3"
+                  }`}
+                >
                   {[...ganadores]
-                    .sort(
-                      (a, b) =>
-                        a.lugar -
-                        b.lugar
-                    )
-                    .map(
-                      (ganador) => (
-                        <div
-                          key={
-                            ganador.lugar
-                          }
-                          className="rounded-2xl bg-white p-4 text-center text-slate-950"
-                        >
-                          <div className="text-4xl">
-                            {iconoLugar(
-                              ganador.lugar
-                            )}
-                          </div>
-
-                          <p className="font-black text-pink-600">
-                            {textoLugar(
-                              ganador.lugar
-                            )}
-                          </p>
-
-                          <p className="mt-1 text-xl font-black">
-                            {
-                              ganador
-                                .participante
-                                .nombre
-                            }
-                          </p>
-
-                          <p className="mt-2 text-sm text-slate-600">
-                            🎁{" "}
-                            {
-                              ganador.premio
-                            }
-                          </p>
+                    .sort((a, b) => a.lugar - b.lugar)
+                    .map((ganador) => (
+                      <div
+                        key={ganador.lugar}
+                        className="rounded-2xl bg-white p-4 text-center text-slate-950"
+                      >
+                        <div className="text-4xl">
+                          {iconoLugar(ganador.lugar)}
                         </div>
-                      )
-                    )}
+
+                        <p className="font-black uppercase text-pink-600">
+                          {textoLugar(ganador.lugar)}
+                        </p>
+
+                        <p className="mt-1 text-xl font-black">
+                          {ganador.participante.nombre}
+                        </p>
+
+                        <p className="mt-2 text-sm text-slate-600">
+                          🎁 {ganador.premio}
+                        </p>
+                      </div>
+                    ))}
                 </div>
               </section>
             )}
 
             <div className="mt-4 flex justify-center">
               <button
-                onClick={
-                  pantallaCompleta
-                }
+                onClick={pantallaCompleta}
                 className="rounded-xl bg-pink-600 px-5 py-3 font-bold"
               >
                 ⛶ Pantalla completa
@@ -966,7 +914,7 @@ export default function RifasPage() {
       )}
 
       <style jsx global>{`
-        @keyframes judisWheelSpin {
+        @keyframes orbitClockwise {
           from {
             transform: rotate(0deg);
           }
@@ -975,66 +923,366 @@ export default function RifasPage() {
           }
         }
 
-        @keyframes judisCounterSpin {
+        @keyframes orbitCounterClockwise {
           from {
-            transform: translate(-50%, -50%)
-              rotate(0deg);
+            transform: rotate(360deg);
           }
           to {
-            transform: translate(-50%, -50%)
-              rotate(-360deg);
+            transform: rotate(0deg);
           }
         }
 
-        @keyframes judisNameBounce {
+        @keyframes counterClockwise {
+          from {
+            transform: translate(-50%, -50%) rotate(0deg)
+              scale(var(--scale));
+          }
+          to {
+            transform: translate(-50%, -50%) rotate(-360deg)
+              scale(var(--scale));
+          }
+        }
+
+        @keyframes counterReverse {
+          from {
+            transform: translate(-50%, -50%) rotate(-360deg)
+              scale(var(--scale));
+          }
+          to {
+            transform: translate(-50%, -50%) rotate(0deg)
+              scale(var(--scale));
+          }
+        }
+
+        @keyframes nameFloat {
           0%,
           100% {
-            transform: translateY(0)
-              scale(1);
+            margin-top: 0;
           }
           50% {
-            transform: translateY(-8px)
-              scale(1.05);
+            margin-top: -10px;
           }
         }
 
-        .judis-wheel {
-          animation: judisWheelSpin 5s linear
-            infinite;
-          transition: animation-duration 0.3s ease;
+        @keyframes machineShake {
+          0%,
+          100% {
+            transform: rotate(0deg);
+          }
+          25% {
+            transform: rotate(-0.8deg);
+          }
+          75% {
+            transform: rotate(0.8deg);
+          }
         }
 
-        .judis-wheel-fast {
-          animation-duration: 1.25s;
+        @keyframes winnerReveal {
+          0% {
+            opacity: 0;
+            transform: translateY(-30px) scale(0.75);
+          }
+          65% {
+            transform: translateY(5px) scale(1.06);
+          }
+          100% {
+            opacity: 1;
+            transform: translateY(0) scale(1);
+          }
         }
 
-        .judis-name-counter {
-          animation: judisCounterSpin 5s linear
-            infinite;
-          transition: animation-duration 0.3s ease;
+        @keyframes winnerFirst {
+          0%,
+          100% {
+            box-shadow: 0 0 25px rgba(236, 72, 153, 0.35);
+          }
+          50% {
+            box-shadow:
+              0 0 45px rgba(236, 72, 153, 0.75),
+              0 0 80px rgba(217, 70, 239, 0.35);
+          }
         }
 
-        .judis-name-counter-fast {
-          animation-duration: 1.25s;
+        @keyframes dotPulse {
+          0%,
+          100% {
+            transform: scale(0.7);
+            opacity: 0.45;
+          }
+          50% {
+            transform: scale(1.2);
+            opacity: 1;
+          }
         }
 
-        .judis-name-ball {
-          animation: judisNameBounce 0.9s
-            ease-in-out infinite;
+        .premium-machine {
+          width: min(92vw, 500px);
+          transition: transform 0.3s ease;
         }
 
-        .judis-drum {
+        .premium-machine-active {
+          animation: machineShake 0.18s ease-in-out infinite;
+        }
+
+        .premium-top {
+          width: 38%;
+          height: 18px;
+          margin: 0 auto -7px;
+          border-radius: 999px;
+          background: linear-gradient(
+            90deg,
+            #6b7280,
+            #f8fafc,
+            #94a3b8,
+            #f8fafc,
+            #64748b
+          );
+          position: relative;
+          z-index: 3;
+        }
+
+        .premium-glass {
+          position: relative;
+          width: 100%;
+          aspect-ratio: 1 / 0.92;
+          overflow: hidden;
+          border-radius: 48% 48% 44% 44% / 46% 46% 50% 50%;
+          border: 9px solid rgba(226, 232, 240, 0.75);
+          background:
+            radial-gradient(
+              circle at 50% 45%,
+              rgba(236, 72, 153, 0.11),
+              transparent 48%
+            ),
+            radial-gradient(
+              circle at 30% 25%,
+              rgba(255, 255, 255, 0.18),
+              transparent 34%
+            ),
+            rgba(13, 18, 40, 0.72);
           box-shadow:
-            inset 0 0 35px rgba(255, 255, 255, 0.08),
-            inset 0 0 70px rgba(236, 72, 153, 0.08),
-            0 18px 45px rgba(0, 0, 0, 0.35);
+            inset 0 0 50px rgba(255, 255, 255, 0.08),
+            inset 0 -35px 60px rgba(0, 0, 0, 0.45),
+            0 25px 60px rgba(0, 0, 0, 0.5),
+            0 0 30px rgba(236, 72, 153, 0.13);
+          backdrop-filter: blur(5px);
+        }
+
+        .premium-rim {
+          position: absolute;
+          border-radius: 50%;
+          pointer-events: none;
+        }
+
+        .premium-rim-one {
+          inset: 4%;
+          border: 2px solid rgba(255, 255, 255, 0.13);
+        }
+
+        .premium-rim-two {
+          inset: 9%;
+          border: 1px solid rgba(236, 72, 153, 0.2);
+        }
+
+        .premium-orbit {
+          position: absolute;
+          inset: 7%;
+          animation: orbitClockwise 6.5s linear infinite;
+        }
+
+        .premium-orbit-reverse {
+          animation-name: orbitCounterClockwise;
+          animation-duration: 8.5s;
+        }
+
+        .premium-orbit-fast {
+          animation-duration: 1.05s;
+        }
+
+        .premium-orbit-fast-reverse {
+          animation-duration: 1.3s;
+        }
+
+        .premium-name-wrap {
+          position: absolute;
+        }
+
+        .premium-counter {
+          animation: counterClockwise 6.5s linear infinite;
+        }
+
+        .premium-counter-reverse {
+          animation: counterReverse 8.5s linear infinite;
+        }
+
+        .premium-counter-fast {
+          animation-duration: 1.05s;
+        }
+
+        .premium-counter-fast-reverse {
+          animation-duration: 1.3s;
+        }
+
+        .premium-name {
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          max-width: 145px;
+          overflow: hidden;
+          text-overflow: ellipsis;
+          white-space: nowrap;
+          border: 1px solid rgba(255, 255, 255, 0.58);
+          border-radius: 999px;
+          padding: 8px 12px;
+          background: linear-gradient(
+            135deg,
+            rgba(236, 72, 153, 0.95),
+            rgba(190, 24, 93, 0.92)
+          );
+          box-shadow:
+            0 7px 18px rgba(0, 0, 0, 0.35),
+            inset 0 1px 0 rgba(255, 255, 255, 0.38);
+          color: white;
+          font-size: 12px;
+          font-weight: 900;
+          animation: nameFloat 1.1s ease-in-out infinite;
+          animation-delay: var(--delay);
+        }
+
+        .premium-name-alt {
+          background: linear-gradient(
+            135deg,
+            rgba(192, 132, 252, 0.95),
+            rgba(147, 51, 234, 0.92)
+          );
+        }
+
+        .premium-reflection-one {
+          position: absolute;
+          left: 12%;
+          top: 9%;
+          width: 20%;
+          height: 45%;
+          border-radius: 50%;
+          transform: rotate(22deg);
+          background: linear-gradient(
+            90deg,
+            rgba(255, 255, 255, 0.24),
+            transparent
+          );
+          filter: blur(6px);
+          pointer-events: none;
+        }
+
+        .premium-reflection-two {
+          position: absolute;
+          right: 9%;
+          bottom: 14%;
+          width: 14%;
+          height: 26%;
+          border-radius: 50%;
+          background: rgba(255, 255, 255, 0.07);
+          filter: blur(8px);
+          pointer-events: none;
+        }
+
+        .premium-glow {
+          position: absolute;
+          left: 20%;
+          right: 20%;
+          bottom: -8%;
+          height: 28%;
+          border-radius: 50%;
+          background: rgba(236, 72, 153, 0.18);
+          filter: blur(24px);
+          pointer-events: none;
+        }
+
+        .premium-neck {
+          width: 30px;
+          height: 58px;
+          margin: -2px auto 0;
+          background: linear-gradient(
+            90deg,
+            #64748b,
+            #f8fafc,
+            #94a3b8,
+            #f8fafc,
+            #64748b
+          );
+          box-shadow: 0 8px 18px rgba(0, 0, 0, 0.35);
+        }
+
+        .premium-base {
+          width: 62%;
+          min-height: 42px;
+          margin: 0 auto;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          border-radius: 999px;
+          background: linear-gradient(
+            180deg,
+            #f8fafc,
+            #94a3b8 55%,
+            #475569
+          );
+          color: #111827;
+          font-size: 11px;
+          font-weight: 950;
+          letter-spacing: 0.25em;
+          box-shadow: 0 16px 30px rgba(0, 0, 0, 0.42);
+        }
+
+        .winner-reveal {
+          animation: winnerReveal 0.65s cubic-bezier(0.2, 0.9, 0.3, 1.25);
+        }
+
+        .winner-first {
+          animation:
+            winnerReveal 0.7s cubic-bezier(0.2, 0.9, 0.3, 1.25),
+            winnerFirst 1.5s ease-in-out infinite 0.7s;
+        }
+
+        .loading-dot {
+          width: 13px;
+          height: 13px;
+          border-radius: 999px;
+          background: #ec4899;
+          animation: dotPulse 0.8s ease-in-out infinite;
+        }
+
+        .loading-dot:nth-child(2) {
+          animation-delay: 0.15s;
+        }
+
+        .loading-dot:nth-child(3) {
+          animation-delay: 0.3s;
+        }
+
+        @media (max-width: 640px) {
+          .premium-machine {
+            width: min(88vw, 390px);
+          }
+
+          .premium-name {
+            max-width: 105px;
+            padding: 6px 9px;
+            font-size: 10px;
+          }
+
+          .premium-neck {
+            height: 42px;
+          }
         }
 
         @media (prefers-reduced-motion: reduce) {
-          .judis-wheel,
-          .judis-name-counter,
-          .judis-name-ball {
-            animation-duration: 8s;
+          .premium-orbit,
+          .premium-counter,
+          .premium-counter-reverse,
+          .premium-name,
+          .premium-machine-active {
+            animation-duration: 12s;
           }
         }
       `}</style>
