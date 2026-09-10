@@ -15,8 +15,64 @@ function csv(valor: unknown) {
   return `"${texto.replace(/"/g, '""')}"`;
 }
 
-export async function GET() {
+export async function GET(request: Request) {
   try {
+    const url = new URL(request.url);
+    const imagenId = url.searchParams.get("imagen");
+
+    // SI PIDEN UNA IMAGEN
+    if (imagenId) {
+      const producto = await prisma.producto.findUnique({
+        where: {
+          id: Number(imagenId),
+        },
+      });
+
+      if (!producto) {
+        return new Response("Producto no encontrado", {
+          status: 404,
+        });
+      }
+
+      const imagen =
+        producto.imagen ||
+        producto.imagenes?.[0] ||
+        "";
+
+      if (!imagen) {
+        return new Response("Imagen no encontrada", {
+          status: 404,
+        });
+      }
+
+      if (
+        imagen.startsWith("http://") ||
+        imagen.startsWith("https://")
+      ) {
+        return Response.redirect(imagen, 302);
+      }
+
+      const match = imagen.match(
+        /^data:(image\/[a-zA-Z0-9.+-]+);base64,(.+)$/
+      );
+
+      if (!match) {
+        return new Response("Imagen inválida", {
+          status: 400,
+        });
+      }
+
+      const buffer = Buffer.from(match[2], "base64");
+
+      return new Response(buffer, {
+        headers: {
+          "Content-Type": match[1],
+          "Cache-Control": "public, max-age=86400",
+        },
+      });
+    }
+
+    // SI PIDEN EL CATÁLOGO
     const productos = await prisma.producto.findMany({
       orderBy: {
         id: "desc",
@@ -36,57 +92,46 @@ export async function GET() {
     ].join(",");
 
     const filas = productos
-      .map((producto) => {
-        const imagen =
+      .filter(
+        (producto) =>
           producto.imagen ||
-          producto.imagenes?.[0] ||
-          "";
-
-        const disponibilidad =
-          producto.existencia > 0
-            ? "in stock"
-            : "out of stock";
-
+          producto.imagenes?.length > 0
+      )
+      .map((producto) => {
         return [
           csv(producto.id),
           csv(producto.nombre),
+          csv(producto.descripcion || producto.nombre),
           csv(
-            producto.descripcion ||
-              `${producto.nombre} disponible en Judi's Shop`
+            producto.existencia > 0
+              ? "in stock"
+              : "out of stock"
           ),
-          csv(disponibilidad),
           csv("new"),
           csv(`${producto.precio.toFixed(2)} MXN`),
-
-          // Por ahora apunta a la tienda.
-          // Después podemos colocar el enlace individual del producto.
           csv("https://www.judisshop.com.mx"),
-
-          csv(imagen),
+          csv(
+            `https://www.judisshop.com.mx/api/catalogo-meta?imagen=${producto.id}`
+          ),
           csv(producto.marca || "Judi's Shop"),
         ].join(",");
       })
       .join("\n");
 
-    const contenido = `${encabezados}\n${filas}`;
-
-    return new Response(contenido, {
-      status: 200,
-      headers: {
-        "Content-Type": "text/csv; charset=utf-8",
-        "Content-Disposition":
-          'inline; filename="judis-shop-meta.csv"',
-        "Cache-Control": "no-store",
-      },
-    });
-  } catch (error) {
-    console.error("Error generando catálogo Meta:", error);
-
     return new Response(
-      "Error generando catálogo de productos",
+      `${encabezados}\n${filas}`,
       {
-        status: 500,
+        headers: {
+          "Content-Type": "text/csv; charset=utf-8",
+          "Cache-Control": "no-store",
+        },
       }
     );
+  } catch (error) {
+    console.error(error);
+
+    return new Response("Error", {
+      status: 500,
+    });
   }
 }
