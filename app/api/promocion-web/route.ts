@@ -6,6 +6,10 @@ import {
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
+const GRAPH_VERSION = "v26.0";
+const GRAPH_URL =
+  `https://graph.facebook.com/${GRAPH_VERSION}`;
+
 const SUPABASE_URL =
   process.env.NEXT_PUBLIC_SUPABASE_URL!;
 
@@ -14,6 +18,15 @@ const SUPABASE_KEY =
 
 const CRON_SECRET =
   process.env.CRON_SECRET!;
+
+const META_PAGE_ID =
+  process.env.META_PAGE_ID!;
+
+const META_PAGE_ACCESS_TOKEN =
+  process.env.META_PAGE_ACCESS_TOKEN!;
+
+const PUBLIC_URL =
+  "https://www.judisshop.com.mx";
 
 type Producto = {
   id: string | number;
@@ -27,7 +40,9 @@ function obtenerImagen(
   producto: Producto
 ) {
   if (
-    Array.isArray(producto.imagenes) &&
+    Array.isArray(
+      producto.imagenes
+    ) &&
     producto.imagenes.length > 0
   ) {
     return producto.imagenes[0];
@@ -38,52 +53,61 @@ function obtenerImagen(
 
 function fechaMonterrey() {
   const partes =
-    new Intl.DateTimeFormat("en-US", {
-      timeZone: "America/Monterrey",
-      year: "numeric",
-      month: "2-digit",
-      day: "2-digit",
-    }).formatToParts(new Date());
+    new Intl.DateTimeFormat(
+      "en-US",
+      {
+        timeZone:
+          "America/Monterrey",
+        year: "numeric",
+        month: "2-digit",
+        day: "2-digit",
+      }
+    ).formatToParts(
+      new Date()
+    );
 
   const year =
     partes.find(
-      (parte) =>
-        parte.type === "year"
+      (p) =>
+        p.type === "year"
     )?.value || "";
 
   const month =
     partes.find(
-      (parte) =>
-        parte.type === "month"
+      (p) =>
+        p.type === "month"
     )?.value || "";
 
   const day =
     partes.find(
-      (parte) =>
-        parte.type === "day"
+      (p) =>
+        p.type === "day"
     )?.value || "";
 
   return `${year}-${month}-${day}`;
 }
 
 function numeroSemana() {
-  const ahora = new Date();
+  const ahora =
+    new Date();
 
-  const inicio = new Date(
-    Date.UTC(
-      ahora.getUTCFullYear(),
-      0,
-      1
-    )
-  );
+  const inicio =
+    new Date(
+      Date.UTC(
+        ahora.getUTCFullYear(),
+        0,
+        1
+      )
+    );
 
-  const dias = Math.floor(
-    (
-      ahora.getTime() -
-      inicio.getTime()
-    ) /
-      86400000
-  );
+  const dias =
+    Math.floor(
+      (
+        ahora.getTime() -
+        inicio.getTime()
+      ) /
+        86400000
+    );
 
   return Math.ceil(
     (
@@ -171,9 +195,8 @@ Conoce nuestros productos disponibles y compra desde donde estés.
 function mezclar<T>(
   lista: T[]
 ) {
-  const copia = [
-    ...lista,
-  ];
+  const copia =
+    [...lista];
 
   for (
     let i =
@@ -199,19 +222,19 @@ function mezclar<T>(
   return copia;
 }
 
-async function obtenerProductos(
-  origin: string
-) {
+async function obtenerProductos() {
   const respuesta =
     await fetch(
-      `${origin}/api/productos`,
+      `${PUBLIC_URL}/api/productos`,
       {
         cache:
           "no-store",
       }
     );
 
-  if (!respuesta.ok) {
+  if (
+    !respuesta.ok
+  ) {
     throw new Error(
       "No fue posible obtener productos."
     );
@@ -261,7 +284,9 @@ async function productosRecientes() {
       }
     );
 
-  if (!respuesta.ok) {
+  if (
+    !respuesta.ok
+  ) {
     return new Set<string>();
   }
 
@@ -304,6 +329,102 @@ async function reservarFecha(
   texto: string,
   imageUrl: string
 ) {
+  const consulta =
+    await fetch(
+      `${SUPABASE_URL}/rest/v1/publicaciones_promocion_web?fecha=eq.${fecha}&select=id,estado`,
+      {
+        headers: {
+          apikey:
+            SUPABASE_KEY,
+
+          Authorization:
+            `Bearer ${SUPABASE_KEY}`,
+        },
+
+        cache:
+          "no-store",
+      }
+    );
+
+  if (!consulta.ok) {
+    throw new Error(
+      "No fue posible revisar la promoción."
+    );
+  }
+
+  const existentes =
+    await consulta.json();
+
+  if (
+    Array.isArray(
+      existentes
+    ) &&
+    existentes.length > 0
+  ) {
+    const existente =
+      existentes[0];
+
+    if (
+      existente.estado ===
+        "publicado" ||
+      existente.estado ===
+        "procesando"
+    ) {
+      return false;
+    }
+
+    const reintento =
+      await fetch(
+        `${SUPABASE_URL}/rest/v1/publicaciones_promocion_web?fecha=eq.${fecha}`,
+        {
+          method: "PATCH",
+
+          headers: {
+            apikey:
+              SUPABASE_KEY,
+
+            Authorization:
+              `Bearer ${SUPABASE_KEY}`,
+
+            "Content-Type":
+              "application/json",
+
+            Prefer:
+              "return=minimal",
+          },
+
+          body:
+            JSON.stringify({
+              estado:
+                "procesando",
+
+              tema,
+
+              productos_ids:
+                productosIds,
+
+              texto,
+
+              imagen_url:
+                imageUrl,
+
+              error: null,
+
+              updated_at:
+                new Date().toISOString(),
+            }),
+        }
+      );
+
+    if (!reintento.ok) {
+      throw new Error(
+        "No fue posible preparar el reintento."
+      );
+    }
+
+    return true;
+  }
+
   const respuesta =
     await fetch(
       `${SUPABASE_URL}/rest/v1/publicaciones_promocion_web`,
@@ -327,24 +448,22 @@ async function reservarFecha(
         body:
           JSON.stringify({
             fecha,
+
             estado:
               "procesando",
+
             tema,
+
             productos_ids:
               productosIds,
+
             texto,
+
             imagen_url:
               imageUrl,
           }),
       }
     );
-
-  if (
-    respuesta.status ===
-    409
-  ) {
-    return false;
-  }
 
   if (!respuesta.ok) {
     const detalle =
@@ -388,6 +507,7 @@ async function actualizarRegistro(
         body:
           JSON.stringify({
             ...datos,
+
             updated_at:
               new Date().toISOString(),
           }),
@@ -404,27 +524,43 @@ async function actualizarRegistro(
   }
 }
 
-async function publicarMeta(
-  origin: string,
+async function publicarFacebook(
   imageUrl: string,
-  caption: string
+  texto: string
 ) {
+  if (
+    !META_PAGE_ID ||
+    !META_PAGE_ACCESS_TOKEN
+  ) {
+    throw new Error(
+      "Faltan variables de Facebook."
+    );
+  }
+
+  const body =
+    new URLSearchParams();
+
+  body.append(
+    "url",
+    imageUrl
+  );
+
+  body.append(
+    "caption",
+    texto
+  );
+
+  body.append(
+    "access_token",
+    META_PAGE_ACCESS_TOKEN
+  );
+
   const respuesta =
     await fetch(
-      `${origin}/api/meta`,
+      `${GRAPH_URL}/${META_PAGE_ID}/photos`,
       {
         method: "POST",
-
-        headers: {
-          "Content-Type":
-            "application/json",
-        },
-
-        body:
-          JSON.stringify({
-            imageUrl,
-            caption,
-          }),
+        body,
       }
     );
 
@@ -432,28 +568,27 @@ async function publicarMeta(
     await respuesta.json();
 
   if (!respuesta.ok) {
+    console.error(
+      "ERROR FACEBOOK PROMOCIÓN:",
+      JSON.stringify(
+        data,
+        null,
+        2
+      )
+    );
+
     throw new Error(
-      data?.error ||
-        data?.message ||
-        "Meta rechazó la publicación."
+      data?.error?.message ||
+        "Facebook rechazó la publicación."
     );
   }
 
   return data;
 }
 
-async function prepararPromocion(
-  request: NextRequest
-) {
-  const origin =
-    new URL(
-      request.url
-    ).origin;
-
+async function prepararPromocion() {
   const productos =
-    await obtenerProductos(
-      origin
-    );
+    await obtenerProductos();
 
   if (
     productos.length ===
@@ -508,7 +643,7 @@ async function prepararPromocion(
     );
 
   const tema =
-    numeroSemana() % 6;
+    numeroSemana() % 5;
 
   const texto =
     textoPromocional(
@@ -516,14 +651,13 @@ async function prepararPromocion(
     );
 
   const imageUrl =
-    `${origin}/api/promocion-web/imagen` +
+    `${PUBLIC_URL}/api/promocion-web/imagen` +
     `?ids=${encodeURIComponent(
       ids.join(",")
     )}` +
     `&tema=${tema}`;
 
   return {
-    origin,
     seleccionados,
     ids,
     tema,
@@ -547,13 +681,12 @@ export async function GET(
       ) === "1";
 
     const promocion =
-      await prepararPromocion(
-        request
-      );
+      await prepararPromocion();
 
     if (preview) {
       return NextResponse.json({
         ok: true,
+
         preview: true,
 
         productos:
@@ -588,6 +721,7 @@ export async function GET(
       return NextResponse.json(
         {
           ok: false,
+
           error:
             "No autorizado.",
         },
@@ -614,17 +748,17 @@ export async function GET(
     if (!reservado) {
       return NextResponse.json({
         ok: true,
+
         publicado: false,
 
         mensaje:
-          "La promoción de hoy ya fue procesada. Se evitó una publicación duplicada.",
+          "La promoción de hoy ya fue publicada o está en proceso.",
       });
     }
 
     try {
-      const resultadoMeta =
-        await publicarMeta(
-          promocion.origin,
+      const facebook =
+        await publicarFacebook(
           promocion.imageUrl,
           promocion.texto
         );
@@ -635,6 +769,11 @@ export async function GET(
           estado:
             "publicado",
 
+          facebook_post_id:
+            facebook?.post_id ||
+            facebook?.id ||
+            null,
+
           error:
             null,
         }
@@ -642,7 +781,11 @@ export async function GET(
 
       return NextResponse.json({
         ok: true,
+
         publicado: true,
+
+        plataforma:
+          "facebook",
 
         productos:
           promocion.ids,
@@ -650,8 +793,7 @@ export async function GET(
         imageUrl:
           promocion.imageUrl,
 
-        meta:
-          resultadoMeta,
+        facebook,
       });
     } catch (error) {
       const mensaje =
@@ -674,7 +816,7 @@ export async function GET(
     }
   } catch (error) {
     console.error(
-      "Error promoción automática:",
+      "ERROR PROMOCIÓN AUTOMÁTICA:",
       error
     );
 
