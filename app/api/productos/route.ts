@@ -13,16 +13,31 @@ const prisma = new PrismaClient({
   adapter,
 });
 
+function imagenSegura(imagen: string | null) {
+  if (!imagen) {
+    return null;
+  }
+
+  // No enviamos imágenes antiguas Base64.
+  if (imagen.startsWith("data:image/")) {
+    return null;
+  }
+
+  // Las nuevas URLs de Supabase sí se conservan.
+  return imagen;
+}
+
+function imagenesSeguras(imagenes: string[]) {
+  return imagenes.filter(
+    (foto: string) =>
+      typeof foto === "string" &&
+      foto.length > 0 &&
+      !foto.startsWith("data:image/")
+  );
+}
+
 export async function GET() {
   try {
-    /*
-      IMPORTANTE:
-      No solicitamos imagen ni imagenes.
-
-      Las imágenes antiguas guardadas como Base64
-      estaban haciendo demasiado pesada la respuesta
-      de /api/productos y provocaban el error 413.
-    */
     const productos = await prisma.producto.findMany({
       orderBy: {
         id: "desc",
@@ -35,12 +50,14 @@ export async function GET() {
         precio: true,
         costo: true,
         existencia: true,
+        imagen: true,
+        imagenes: true,
         marca: true,
         categoria: true,
       },
     });
 
-    const productosLigeros = productos.map((producto) => {
+    const productosFinales = productos.map((producto) => {
       const precio = Number(producto.precio);
       const costo = Number(producto.costo);
 
@@ -55,18 +72,18 @@ export async function GET() {
         marca: producto.marca,
         categoria: producto.categoria,
 
-        /*
-          Temporalmente las imágenes antiguas
-          no se envían por esta ruta.
-        */
-        imagen: null,
-        imagenes: [] as string[],
+        // URL nueva = se muestra.
+        // Base64 antigua = temporalmente se oculta.
+        imagen: imagenSegura(producto.imagen),
+
+        imagenes: imagenesSeguras(
+          producto.imagenes
+        ),
       };
     });
 
-    return Response.json(productosLigeros, {
+    return Response.json(productosFinales, {
       status: 200,
-
       headers: {
         "Cache-Control":
           "no-store, no-cache, must-revalidate, proxy-revalidate",
@@ -92,9 +109,7 @@ export async function GET() {
   }
 }
 
-export async function POST(
-  request: Request
-) {
+export async function POST(request: Request) {
   try {
     const datos = await request.json();
 
@@ -106,14 +121,8 @@ export async function POST(
       datos.descripcion ?? ""
     ).trim();
 
-    const precio = Number(
-      datos.precio
-    );
-
-    const costo = Number(
-      datos.costo
-    );
-
+    const precio = Number(datos.precio);
+    const costo = Number(datos.costo);
     const existencia = Number(
       datos.existencia
     );
@@ -200,20 +209,14 @@ export async function POST(
       );
     }
 
-    /*
-      Una imagen nueva debe llegar como URL
-      de Supabase, nunca como Base64.
-    */
     if (
       imagen &&
-      imagen.startsWith(
-        "data:image/"
-      )
+      imagen.startsWith("data:image/")
     ) {
       return Response.json(
         {
           error:
-            "La imagen llegó en Base64. Debe subirse primero a Supabase.",
+            "La fotografía debe subirse a Supabase antes de guardar.",
         },
         {
           status: 400,
@@ -221,19 +224,17 @@ export async function POST(
       );
     }
 
-    const tieneBase64Extra =
+    const tieneBase64 =
       imagenesExtra.some(
         (foto: string) =>
-          foto.startsWith(
-            "data:image/"
-          )
+          foto.startsWith("data:image/")
       );
 
-    if (tieneBase64Extra) {
+    if (tieneBase64) {
       return Response.json(
         {
           error:
-            "Una fotografía adicional llegó en Base64.",
+            "Una fotografía adicional todavía está en Base64.",
         },
         {
           status: 400,
@@ -250,8 +251,7 @@ export async function POST(
           costo,
           existencia,
           imagen,
-          imagenes:
-            imagenesExtra,
+          imagenes: imagenesExtra,
           marca,
           categoria,
         },
@@ -285,16 +285,11 @@ export async function POST(
   }
 }
 
-export async function DELETE(
-  request: Request
-) {
+export async function DELETE(request: Request) {
   try {
-    const datos =
-      await request.json();
+    const datos = await request.json();
 
-    const id = Number(
-      datos.id
-    );
+    const id = Number(datos.id);
 
     if (
       Number.isNaN(id) ||
@@ -317,14 +312,9 @@ export async function DELETE(
       },
     });
 
-    return Response.json(
-      {
-        ok: true,
-      },
-      {
-        status: 200,
-      }
-    );
+    return Response.json({
+      ok: true,
+    });
   } catch (error) {
     console.error(
       "ERROR DELETE PRODUCTO:",
@@ -343,16 +333,11 @@ export async function DELETE(
   }
 }
 
-export async function PUT(
-  request: Request
-) {
+export async function PUT(request: Request) {
   try {
-    const datos =
-      await request.json();
+    const datos = await request.json();
 
-    const id = Number(
-      datos.id
-    );
+    const id = Number(datos.id);
 
     const nombre = String(
       datos.nombre ?? ""
@@ -362,14 +347,8 @@ export async function PUT(
       datos.descripcion ?? ""
     ).trim();
 
-    const precio = Number(
-      datos.precio
-    );
-
-    const costo = Number(
-      datos.costo
-    );
-
+    const precio = Number(datos.precio);
+    const costo = Number(datos.costo);
     const existencia = Number(
       datos.existencia
     );
@@ -473,14 +452,12 @@ export async function PUT(
 
     if (
       imagen &&
-      imagen.startsWith(
-        "data:image/"
-      )
+      imagen.startsWith("data:image/")
     ) {
       return Response.json(
         {
           error:
-            "La imagen debe ser una URL y no Base64.",
+            "La fotografía debe ser una URL.",
         },
         {
           status: 400,
@@ -491,16 +468,14 @@ export async function PUT(
     const tieneBase64 =
       imagenes.some(
         (foto: string) =>
-          foto.startsWith(
-            "data:image/"
-          )
+          foto.startsWith("data:image/")
       );
 
     if (tieneBase64) {
       return Response.json(
         {
           error:
-            "Las fotografías deben ser URLs y no Base64.",
+            "Las fotografías deben ser URLs.",
         },
         {
           status: 400,
@@ -527,15 +502,10 @@ export async function PUT(
         },
       });
 
-    return Response.json(
-      {
-        ok: true,
-        id: producto.id,
-      },
-      {
-        status: 200,
-      }
-    );
+    return Response.json({
+      ok: true,
+      id: producto.id,
+    });
   } catch (error) {
     console.error(
       "ERROR PUT PRODUCTO:",
