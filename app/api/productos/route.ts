@@ -3,6 +3,7 @@ import { PrismaClient } from "@/app/generated/prisma/client";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
+export const revalidate = 0;
 
 const adapter = new PrismaPg({
   connectionString: process.env.DATABASE_URL!,
@@ -12,67 +13,67 @@ const prisma = new PrismaClient({
   adapter,
 });
 
-function limpiarImagen(
-  imagen: string | null
-) {
-  if (!imagen) {
-    return null;
-  }
-
-  // Las fotos nuevas serán URLs de Supabase.
-  // Las antiguas Base64 se omiten temporalmente
-  // para evitar el error 413 de Vercel.
-  if (
-    imagen.startsWith(
-      "data:image/"
-    )
-  ) {
-    return null;
-  }
-
-  return imagen;
-}
-
 export async function GET() {
   try {
-    const productos =
-      await prisma.producto.findMany({
-        orderBy: {
-          id: "desc",
-        },
-      });
+    /*
+      IMPORTANTE:
+      No solicitamos imagen ni imagenes.
 
-    const productosLigeros =
-      productos.map(
-        (producto) => ({
-          ...producto,
+      Las imágenes antiguas guardadas como Base64
+      estaban haciendo demasiado pesada la respuesta
+      de /api/productos y provocaban el error 413.
+    */
+    const productos = await prisma.producto.findMany({
+      orderBy: {
+        id: "desc",
+      },
 
-          imagen:
-            limpiarImagen(
-              producto.imagen
-            ),
+      select: {
+        id: true,
+        nombre: true,
+        descripcion: true,
+        precio: true,
+        costo: true,
+        existencia: true,
+        marca: true,
+        categoria: true,
+      },
+    });
 
-          imagenes:
-            producto.imagenes.filter(
-              (imagen) =>
-                typeof imagen ===
-                  "string" &&
-                !imagen.startsWith(
-                  "data:image/"
-                )
-            ),
-        })
-      );
+    const productosLigeros = productos.map((producto) => {
+      const precio = Number(producto.precio);
+      const costo = Number(producto.costo);
 
-    return Response.json(
-      productosLigeros,
-      {
-        headers: {
-          "Cache-Control":
-            "no-store",
-        },
-      }
-    );
+      return {
+        id: producto.id,
+        nombre: producto.nombre,
+        descripcion: producto.descripcion ?? "",
+        precio,
+        costo,
+        existencia: Number(producto.existencia),
+        utilidad: precio - costo,
+        marca: producto.marca,
+        categoria: producto.categoria,
+
+        /*
+          Temporalmente las imágenes antiguas
+          no se envían por esta ruta.
+        */
+        imagen: null,
+        imagenes: [] as string[],
+      };
+    });
+
+    return Response.json(productosLigeros, {
+      status: 200,
+
+      headers: {
+        "Cache-Control":
+          "no-store, no-cache, must-revalidate, proxy-revalidate",
+        Pragma: "no-cache",
+        Expires: "0",
+      },
+    });
   } catch (error) {
     console.error(
       "ERROR GET PRODUCTOS:",
@@ -95,49 +96,176 @@ export async function POST(
   request: Request
 ) {
   try {
-    const datos =
-      await request.json();
+    const datos = await request.json();
+
+    const nombre = String(
+      datos.nombre ?? ""
+    ).trim();
+
+    const descripcion = String(
+      datos.descripcion ?? ""
+    ).trim();
+
+    const precio = Number(
+      datos.precio
+    );
+
+    const costo = Number(
+      datos.costo
+    );
+
+    const existencia = Number(
+      datos.existencia
+    );
+
+    const marca = String(
+      datos.marca ?? "Sin marca"
+    ).trim();
+
+    const categoria = String(
+      datos.categoria ?? ""
+    ).trim();
+
+    const imagen =
+      typeof datos.imagen === "string" &&
+      datos.imagen.trim().length > 0
+        ? datos.imagen.trim()
+        : null;
+
+    const imagenesExtra: string[] =
+      Array.isArray(datos.imagenesExtra)
+        ? datos.imagenesExtra.filter(
+            (
+              foto: unknown
+            ): foto is string =>
+              typeof foto === "string" &&
+              foto.trim().length > 0
+          )
+        : [];
+
+    if (!nombre) {
+      return Response.json(
+        {
+          error:
+            "Falta el nombre del producto.",
+        },
+        {
+          status: 400,
+        }
+      );
+    }
+
+    if (
+      Number.isNaN(precio) ||
+      precio < 0
+    ) {
+      return Response.json(
+        {
+          error:
+            "El precio no es válido.",
+        },
+        {
+          status: 400,
+        }
+      );
+    }
+
+    if (
+      Number.isNaN(costo) ||
+      costo < 0
+    ) {
+      return Response.json(
+        {
+          error:
+            "El costo no es válido.",
+        },
+        {
+          status: 400,
+        }
+      );
+    }
+
+    if (
+      Number.isNaN(existencia) ||
+      existencia < 0
+    ) {
+      return Response.json(
+        {
+          error:
+            "La existencia no es válida.",
+        },
+        {
+          status: 400,
+        }
+      );
+    }
+
+    /*
+      Una imagen nueva debe llegar como URL
+      de Supabase, nunca como Base64.
+    */
+    if (
+      imagen &&
+      imagen.startsWith(
+        "data:image/"
+      )
+    ) {
+      return Response.json(
+        {
+          error:
+            "La imagen llegó en Base64. Debe subirse primero a Supabase.",
+        },
+        {
+          status: 400,
+        }
+      );
+    }
+
+    const tieneBase64Extra =
+      imagenesExtra.some(
+        (foto: string) =>
+          foto.startsWith(
+            "data:image/"
+          )
+      );
+
+    if (tieneBase64Extra) {
+      return Response.json(
+        {
+          error:
+            "Una fotografía adicional llegó en Base64.",
+        },
+        {
+          status: 400,
+        }
+      );
+    }
 
     const producto =
       await prisma.producto.create({
         data: {
-          nombre:
-            datos.nombre,
-
-          descripcion:
-            datos.descripcion ||
-            "",
-
-          precio: Number(
-            datos.precio
-          ),
-
-          costo: Number(
-            datos.costo
-          ),
-
-          existencia: Number(
-            datos.existencia
-          ),
-
-          imagen:
-            datos.imagen ||
-            null,
-
+          nombre,
+          descripcion,
+          precio,
+          costo,
+          existencia,
+          imagen,
           imagenes:
-            datos.imagenesExtra ||
-            [],
-
-          marca:
-            datos.marca,
-
-          categoria:
-            datos.categoria,
+            imagenesExtra,
+          marca,
+          categoria,
         },
       });
 
     return Response.json(
-      producto
+      {
+        ok: true,
+        id: producto.id,
+        nombre: producto.nombre,
+      },
+      {
+        status: 201,
+      }
     );
   } catch (error) {
     console.error(
@@ -164,17 +292,39 @@ export async function DELETE(
     const datos =
       await request.json();
 
+    const id = Number(
+      datos.id
+    );
+
+    if (
+      Number.isNaN(id) ||
+      id <= 0
+    ) {
+      return Response.json(
+        {
+          error:
+            "ID de producto inválido.",
+        },
+        {
+          status: 400,
+        }
+      );
+    }
+
     await prisma.producto.delete({
       where: {
-        id: Number(
-          datos.id
-        ),
+        id,
       },
     });
 
-    return Response.json({
-      ok: true,
-    });
+    return Response.json(
+      {
+        ok: true,
+      },
+      {
+        status: 200,
+      }
+    );
   } catch (error) {
     console.error(
       "ERROR DELETE PRODUCTO:",
@@ -200,48 +350,191 @@ export async function PUT(
     const datos =
       await request.json();
 
+    const id = Number(
+      datos.id
+    );
+
+    const nombre = String(
+      datos.nombre ?? ""
+    ).trim();
+
+    const descripcion = String(
+      datos.descripcion ?? ""
+    ).trim();
+
+    const precio = Number(
+      datos.precio
+    );
+
+    const costo = Number(
+      datos.costo
+    );
+
+    const existencia = Number(
+      datos.existencia
+    );
+
+    const marca = String(
+      datos.marca ?? "Sin marca"
+    ).trim();
+
+    const categoria = String(
+      datos.categoria ?? ""
+    ).trim();
+
+    const imagen =
+      typeof datos.imagen === "string" &&
+      datos.imagen.trim().length > 0
+        ? datos.imagen.trim()
+        : null;
+
+    const imagenes: string[] =
+      Array.isArray(datos.imagenes)
+        ? datos.imagenes.filter(
+            (
+              foto: unknown
+            ): foto is string =>
+              typeof foto === "string" &&
+              foto.trim().length > 0
+          )
+        : [];
+
+    if (
+      Number.isNaN(id) ||
+      id <= 0
+    ) {
+      return Response.json(
+        {
+          error:
+            "ID de producto inválido.",
+        },
+        {
+          status: 400,
+        }
+      );
+    }
+
+    if (!nombre) {
+      return Response.json(
+        {
+          error:
+            "Falta el nombre del producto.",
+        },
+        {
+          status: 400,
+        }
+      );
+    }
+
+    if (
+      Number.isNaN(precio) ||
+      precio < 0
+    ) {
+      return Response.json(
+        {
+          error:
+            "El precio no es válido.",
+        },
+        {
+          status: 400,
+        }
+      );
+    }
+
+    if (
+      Number.isNaN(costo) ||
+      costo < 0
+    ) {
+      return Response.json(
+        {
+          error:
+            "El costo no es válido.",
+        },
+        {
+          status: 400,
+        }
+      );
+    }
+
+    if (
+      Number.isNaN(existencia) ||
+      existencia < 0
+    ) {
+      return Response.json(
+        {
+          error:
+            "La existencia no es válida.",
+        },
+        {
+          status: 400,
+        }
+      );
+    }
+
+    if (
+      imagen &&
+      imagen.startsWith(
+        "data:image/"
+      )
+    ) {
+      return Response.json(
+        {
+          error:
+            "La imagen debe ser una URL y no Base64.",
+        },
+        {
+          status: 400,
+        }
+      );
+    }
+
+    const tieneBase64 =
+      imagenes.some(
+        (foto: string) =>
+          foto.startsWith(
+            "data:image/"
+          )
+      );
+
+    if (tieneBase64) {
+      return Response.json(
+        {
+          error:
+            "Las fotografías deben ser URLs y no Base64.",
+        },
+        {
+          status: 400,
+        }
+      );
+    }
+
     const producto =
       await prisma.producto.update({
         where: {
-          id: Number(
-            datos.id
-          ),
+          id,
         },
 
         data: {
-          nombre:
-            datos.nombre,
-
-          precio: Number(
-            datos.precio
-          ),
-
-          costo: Number(
-            datos.costo
-          ),
-
-          existencia: Number(
-            datos.existencia
-          ),
-
-          imagen:
-            datos.imagen ||
-            null,
-
-          imagenes:
-            datos.imagenes ??
-            [],
-
-          marca:
-            datos.marca,
-
-          categoria:
-            datos.categoria,
+          nombre,
+          descripcion,
+          precio,
+          costo,
+          existencia,
+          imagen,
+          imagenes,
+          marca,
+          categoria,
         },
       });
 
     return Response.json(
-      producto
+      {
+        ok: true,
+        id: producto.id,
+      },
+      {
+        status: 200,
+      }
     );
   } catch (error) {
     console.error(
