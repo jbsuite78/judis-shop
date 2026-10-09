@@ -14,6 +14,40 @@ const prisma = new PrismaClient({
   adapter,
 });
 
+// Pósters aprobados para las fotografías principales de SKALA.
+// Se aplican solo a productos identificados sin ambigüedad y no modifican
+// precio, costo, existencias, descripciones ni registros en la base de datos.
+const postersSkala = {
+  lisos: "https://static.metricool.com/planner/202610/7322149-file-13469355690424613940.png",
+  cachos: "https://static.metricool.com/planner/202610/7322149-file-9308543703604189571.png",
+  setCachos: "https://static.metricool.com/planner/202610/7322149-file-11805395001845497530.png",
+} as const;
+
+function posterSkala(nombre: string, marca: string): string | null {
+  const normalizar = (texto: string) =>
+    texto.normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+      .toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
+
+  const nombreNorm = normalizar(nombre);
+  const etiqueta = normalizar(nombre + " " + marca);
+  if (!/(^| )skala( |$)/.test(etiqueta)) return null;
+
+  const lisos = /(^| )mais lisos( |$)/.test(nombreNorm);
+  const cachos = /(^| )mais cachos( |$)/.test(nombreNorm);
+  if (lisos === cachos) return null;
+
+  const set = /(^| )(set|kit|combo|paquete|trio)( |$)/.test(nombreNorm)
+    || (nombreNorm.includes("shampoo") && nombreNorm.includes("acondicionador"));
+  if (set) return cachos ? postersSkala.setCachos : null;
+
+  // Evita atribuir el póster de la crema 1000 g a un shampoo
+  // o acondicionador individual.
+  if (/(^| )(shampoo|champu|acondicionador|conditioner)( |$)/.test(nombreNorm)
+      || /(^| )(325ml|325 ml|250ml|250 ml)( |$)/.test(nombreNorm)) return null;
+
+  return lisos ? postersSkala.lisos : postersSkala.cachos;
+}
+
 function imagenSegura(imagen: string | null) {
   if (!imagen) {
     return null;
@@ -59,6 +93,7 @@ export async function GET() {
     });
 
     const productosFinales = productos.map((producto) => {
+      const posterPrincipal = posterSkala(producto.nombre, producto.marca);
       const precio = Number(producto.precio);
       const costo = Number(producto.costo);
 
@@ -75,7 +110,7 @@ export async function GET() {
 
         // URL nueva = se muestra.
         // Base64 antigua = temporalmente se oculta.
-        imagen: imagenSegura(producto.imagen),
+        imagen: posterPrincipal ?? imagenSegura(producto.imagen),
 
         imagenes: imagenesSeguras(
           producto.imagenes
