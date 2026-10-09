@@ -1,3 +1,4 @@
+import { hasAdminSession, isAdminMutation, unauthorizedResponse } from "@/lib/admin-auth";
 import { NextRequest, NextResponse } from "next/server";
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -15,7 +16,8 @@ function headers() {
   };
 }
 
-export async function GET() {
+export async function GET(request: NextRequest) {
+  if (!hasAdminSession(request)) return unauthorizedResponse();
   try {
     if (!supabaseUrl) {
       throw new Error("Falta NEXT_PUBLIC_SUPABASE_URL");
@@ -66,6 +68,7 @@ export async function GET() {
 }
 
 export async function POST(request: NextRequest) {
+  if (!isAdminMutation(request)) return unauthorizedResponse();
   try {
     if (!supabaseUrl) {
       throw new Error("Falta NEXT_PUBLIC_SUPABASE_URL");
@@ -147,6 +150,7 @@ export async function POST(request: NextRequest) {
 }
 
 export async function PATCH(request: NextRequest) {
+  if (!isAdminMutation(request)) return unauthorizedResponse();
   try {
     if (!supabaseUrl) {
       throw new Error("Falta NEXT_PUBLIC_SUPABASE_URL");

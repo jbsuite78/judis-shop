@@ -1,3 +1,4 @@
+import { hasAdminSession, isAdminMutation, unauthorizedResponse } from "@/lib/admin-auth";
 import { imagenVisibleProducto } from "@/lib/imagenes-posters-judis";
 import { PrismaPg } from "@prisma/adapter-pg";
 import { PrismaClient } from "@/app/generated/prisma/client";
@@ -71,7 +72,7 @@ function imagenesSeguras(imagenes: string[]) {
   );
 }
 
-export async function GET() {
+export async function GET(request: Request) {
   try {
     const productos = await prisma.producto.findMany({
       orderBy: {
@@ -118,7 +119,10 @@ export async function GET() {
       };
     });
 
-    return Response.json(productosFinales.map(imagenVisibleProducto), {
+    const visibles = productosFinales.map(imagenVisibleProducto);
+    // Nunca publicar costos ni utilidades a los visitantes; solo el admin autenticado los recibe.
+    const seguros = hasAdminSession(request) ? visibles : visibles.map(({ costo: _c, utilidad: _u, ...publico }) => publico);
+    return Response.json(seguros, {
       status: 200,
       headers: {
         "Cache-Control":
@@ -146,6 +150,7 @@ export async function GET() {
 }
 
 export async function POST(request: Request) {
+  if (!isAdminMutation(request)) return unauthorizedResponse();
   try {
     const datos = await request.json();
 
@@ -322,6 +327,7 @@ export async function POST(request: Request) {
 }
 
 export async function DELETE(request: Request) {
+  if (!isAdminMutation(request)) return unauthorizedResponse();
   try {
     const datos = await request.json();
 
@@ -370,6 +376,7 @@ export async function DELETE(request: Request) {
 }
 
 export async function PUT(request: Request) {
+  if (!isAdminMutation(request)) return unauthorizedResponse();
   try {
     const datos = await request.json();
 

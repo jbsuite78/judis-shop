@@ -1,6 +1,8 @@
+import { hasAdminSession, unauthorizedResponse } from "@/lib/admin-auth";
 import { NextResponse } from "next/server";
 
-export async function GET() {
+export async function GET(request: Request) {
+  if (!hasAdminSession(request)) return unauthorizedResponse();
   try {
     const response = await fetch("http://localhost:3000/api/meta", {
       method: "POST",

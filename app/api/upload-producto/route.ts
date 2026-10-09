@@ -1,3 +1,4 @@
+import { isAdminMutation, unauthorizedResponse } from "@/lib/admin-auth";
 import { createClient } from "@supabase/supabase-js";
 
 export const runtime = "nodejs";
@@ -69,8 +70,8 @@ async function asegurarBucket() {
 export async function POST(
   request: Request
 ) {
+  if (!isAdminMutation(request)) return unauthorizedResponse();
   try {
-    await asegurarBucket();
 
     const formulario =
       await request.formData();
@@ -105,10 +106,19 @@ export async function POST(
       );
     }
 
-    const buffer =
-      Buffer.from(
-        await archivo.arrayBuffer()
-      );
+    const permitidos = ["image/jpeg", "image/png", "image/webp"];
+    if (!permitidos.includes(archivo.type)) {
+      return Response.json({ error: "Formato de imagen no permitido. Usa JPG, PNG o WebP." }, { status: 400 });
+    }
+
+    const buffer = Buffer.from(await archivo.arrayBuffer());
+    const jpeg = buffer.length > 3 && buffer[0] === 0xff && buffer[1] === 0xd8 && buffer[2] === 0xff;
+    const png = buffer.length > 8 && buffer.subarray(0, 8).equals(Buffer.from([137,80,78,71,13,10,26,10]));
+    const webp = buffer.length > 12 && buffer.toString("ascii",0,4) === "RIFF" && buffer.toString("ascii",8,12) === "WEBP";
+    if (!((archivo.type === "image/jpeg" && jpeg) || (archivo.type === "image/png" && png) || (archivo.type === "image/webp" && webp))) {
+      return Response.json({ error: "El archivo no contiene una imagen válida." }, { status: 400 });
+    }
+    await asegurarBucket();
 
     let extension = "jpg";
 

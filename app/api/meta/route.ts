@@ -1,3 +1,4 @@
+import { isAdminMutation, isCronRequest, unauthorizedResponse } from "@/lib/admin-auth";
 import { NextResponse } from "next/server";
 import sharp from "sharp";
 const GRAPH_VERSION = "v26.0";
@@ -51,6 +52,7 @@ async function convertirBase64AUrlPublica(dataUrl: string) {
   return `${SUPABASE_URL}/storage/v1/object/public/product-images/${nombreArchivo}`;
 }
 export async function POST(request: Request) {
+  if (!isAdminMutation(request) && !isCronRequest(request)) return unauthorizedResponse();
   try {
    const { imageUrl, caption, productoId } = await request.json();
 

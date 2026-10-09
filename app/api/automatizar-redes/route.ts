@@ -68,6 +68,7 @@ const metaResponse = await fetch(`${origin}/api/meta`, {
   method: "POST",
   headers: {
     "Content-Type": "application/json",
+    "Authorization": `Bearer ${cronSecret}`,
   },
   body: JSON.stringify({
     imageUrl: primerProducto.imagen,

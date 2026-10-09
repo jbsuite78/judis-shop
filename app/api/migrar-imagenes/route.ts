@@ -1,12 +1,10 @@
+import { hasAdminSession, unauthorizedResponse } from "@/lib/admin-auth";
 import { PrismaPg } from "@prisma/adapter-pg";
 import { PrismaClient } from "@/app/generated/prisma/client";
 import { createClient } from "@supabase/supabase-js";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
-
-const CLAVE_MIGRACION =
-  "JUDIS-MIGRA-93K4P7";
 
 const BUCKET = "productos";
 
@@ -323,30 +321,8 @@ ${contenido}
 export async function GET(
   request: Request
 ) {
-  const url =
-    new URL(
-      request.url
-    );
-
-  const clave =
-    url.searchParams.get(
-      "key"
-    );
-
-  if (
-    clave !==
-    CLAVE_MIGRACION
-  ) {
-    return Response.json(
-      {
-        error:
-          "No autorizado.",
-      },
-      {
-        status: 401,
-      }
-    );
-  }
+  if (!hasAdminSession(request)) return unauthorizedResponse();
+  const url = new URL(request.url);
 
   const after =
     Number(
@@ -565,10 +541,7 @@ export async function GET(
       "⏳ Continuando automáticamente..."
     );
 
-    const siguiente =
-      `/api/migrar-imagenes?key=${encodeURIComponent(
-        CLAVE_MIGRACION
-      )}&after=${ultimoId}`;
+    const siguiente = `/api/migrar-imagenes?after=${ultimoId}`;
 
     return paginaHtml(
       mensajes.join("\n"),

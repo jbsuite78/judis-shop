@@ -11,6 +11,8 @@ type Producto = {
   existencia?: number;
   utilidad?: number;
   imagen: string;
+  imagenes?: string[];
+  descripcion?: string;
   marca: string;
   categoria: string;
 };
@@ -51,6 +53,9 @@ export default function EditarProductoPage() {
   const [costo, setCosto] = useState("");
   const [existencia, setExistencia] = useState("");
   const [imagen, setImagen] = useState("");
+  const [imagenes, setImagenes] = useState<string[]>([]);
+  const [descripcion, setDescripcion] = useState("");
+  const [subiendo, setSubiendo] = useState(false);
   const [marca, setMarca] = useState("Sin marca");
   const [categoria, setCategoria] = useState("Bolsas y Carteras");
   const [mensaje, setMensaje] = useState("");
@@ -78,6 +83,8 @@ useEffect(() => {
     setCosto(String(productoEncontrado.costo ?? 0));
     setExistencia(String(productoEncontrado.existencia ?? 0));
     setImagen(productoEncontrado.imagen ?? "");
+    setImagenes(productoEncontrado.imagenes ?? []);
+    setDescripcion(productoEncontrado.descripcion ?? "");
     setMarca(productoEncontrado.marca);
     setCategoria(productoEncontrado.categoria);
     setCargando(false);
@@ -85,28 +92,49 @@ useEffect(() => {
 
   cargarProducto();
 }, [params.id]);
-  function seleccionarImagen(
-    evento: React.ChangeEvent<HTMLInputElement>
-  ) {
+  async function seleccionarImagen(evento: React.ChangeEvent<HTMLInputElement>) {
     const archivo = evento.target.files?.[0];
-
     if (!archivo) return;
-
-    const lector = new FileReader();
-
-    lector.onload = () => {
-      if (typeof lector.result === "string") {
-        setImagen(lector.result);
-      }
-    };
-
-    lector.readAsDataURL(archivo);
+    setSubiendo(true);
+    setMensaje("Subiendo la fotografía...");
+    try {
+      const img = await new Promise<HTMLImageElement>((resolve, reject) => {
+        const url = URL.createObjectURL(archivo);
+        const element = new Image();
+        element.onload = () => { URL.revokeObjectURL(url); resolve(element); };
+        element.onerror = () => { URL.revokeObjectURL(url); reject(new Error("Imagen no válida.")); };
+        element.src = url;
+      });
+      const canvas = document.createElement("canvas");
+      const escala = Math.min(1, 1600 / Math.max(img.naturalWidth, img.naturalHeight));
+      canvas.width = Math.round(img.naturalWidth * escala);
+      canvas.height = Math.round(img.naturalHeight * escala);
+      const ctx = canvas.getContext("2d");
+      if (!ctx) throw new Error("No se pudo procesar la fotografía.");
+      ctx.fillStyle = "#ffffff";
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+      const blob = await new Promise<Blob>((resolve, reject) => {
+        canvas.toBlob((result) => result ? resolve(result) : reject(new Error("Error al comprimir.")), "image/jpeg", 0.8);
+      });
+      const form = new FormData();
+      form.append("archivo", new File([blob], "producto.jpg", { type: "image/jpeg" }));
+      const respuesta = await fetch("/api/upload-producto", { method: "POST", body: form });
+      const datos = await respuesta.json();
+      if (!respuesta.ok || !datos.ok) throw new Error(datos.error ?? "Error subiendo la fotografía");
+      setImagen(datos.url);
+      setMensaje("✅ Fotografía lista. Guarda los cambios.");
+    } catch (error) {
+      setMensaje(error instanceof Error ? error.message : "Error subiendo la fotografía.");
+    } finally {
+      setSubiendo(false);
+    }
   }
 
-  function guardarCambios(evento: FormEvent<HTMLFormElement>) {
+  async function guardarCambios(evento: FormEvent<HTMLFormElement>) {
     evento.preventDefault();
 
-    if (!nombre.trim() || !precio || !costo || !existencia) {
+    if (!nombre.trim() || precio === "" || costo === "" || existencia === "") {
       setMensaje("Completa nombre, precio, costo y existencia.");
       return;
     }
@@ -130,7 +158,8 @@ useEffect(() => {
    
 
    
-fetch("/api/productos", {
+try {
+const respuesta = await fetch("/api/productos", {
   method: "PUT",
   headers: {
     "Content-Type": "application/json",
@@ -142,15 +171,22 @@ fetch("/api/productos", {
     costo: costoNumero,
     existencia: existenciaNumero,
     imagen,
+    imagenes,
+    descripcion,
     marca,
     categoria,
   }),
 });
+    const datos = await respuesta.json();
+    if (!respuesta.ok || !datos.ok) throw new Error(datos.error ?? "No se pudo actualizar el producto.");
     setMensaje("Producto actualizado correctamente.");
 
     setTimeout(() => {
       router.push("/admin/inventario");
     }, 700);
+    } catch (error) {
+      setMensaje(error instanceof Error ? error.message : "Error al guardar cambios.");
+    }
   }
 
   if (cargando) {
@@ -299,6 +335,7 @@ fetch("/api/productos", {
 
           <button
             type="submit"
+            disabled={subiendo}
             className="w-full rounded-xl bg-pink-600 px-6 py-4 font-bold text-white"
           >
             Guardar cambios
