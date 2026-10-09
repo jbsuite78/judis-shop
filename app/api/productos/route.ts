@@ -1,3 +1,4 @@
+import { imagenVisibleProducto } from "@/lib/imagenes-posters-judis";
 import { PrismaPg } from "@prisma/adapter-pg";
 import { PrismaClient } from "@/app/generated/prisma/client";
 
@@ -82,7 +83,7 @@ export async function GET() {
       };
     });
 
-    return Response.json(productosFinales, {
+    return Response.json(productosFinales.map(imagenVisibleProducto), {
       status: 200,
       headers: {
         "Cache-Control":
