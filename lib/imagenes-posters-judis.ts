@@ -8,6 +8,7 @@
  * Si el producto no coincide con una variante inequívoca, no se cambia.
  */
 type ProductoConImagen = {
+  id?: number;
   nombre: string;
   marca?: string | null;
   imagen?: string | null;
@@ -26,6 +27,18 @@ const fotos = {
   dermasilTonic: "https://static.metricool.com/planner/202610/7322149-file-14127246768407426775.png",
 } as const;
 
+// Nuevos pósters (9/oct/2026). Vincular por ID y por nombre evita
+// reemplazar otra variante por accidente. Las imágenes originales no se borran.
+const postersIndividuales: Record<number, { nombre: string; url: string }> = {
+  136: { nombre: "Guess Seductive Red", url: "https://static.metricool.com/planner/202610/7322149-file-10236667208351142097.png" },
+  158: { nombre: "Steve Madden Billfold Wallet", url: "https://static.metricool.com/planner/202610/7322149-file-16772486144027881581.png" },
+  140: { nombre: "Cartera Steve Madden Passcase", url: "https://static.metricool.com/planner/202610/7322149-file-15837339901418004469.png" },
+  110: { nombre: "Timberland Cartera Trifold", url: "https://static.metricool.com/planner/202610/7322149-file-8050970878241834590.png" },
+  191: { nombre: "Cartera Steve Madden para dama", url: "https://static.metricool.com/planner/202610/7322149-file-17940626417091160405.png" },
+  129: { nombre: "Fruit Fusion Watermelon Whirl", url: "https://static.metricool.com/planner/202610/7322149-file-17378242748663783680.png" },
+  108: { nombre: "Victoria’s Secret Mini Fragrance Mist Set", url: "https://static.metricool.com/planner/202610/7322149-file-6266656840443874796.png" },
+};
+
 function normal(texto?: string | null) {
   return String(texto ?? "")
     .normalize("NFD")
@@ -39,6 +52,9 @@ const tiene = (s: string, r: RegExp) => r.test(s);
 
 export function posterParaProducto(producto: ProductoConImagen): string | null {
   const nombre = normal(producto.nombre);
+  const porId = typeof producto.id === "number" ? postersIndividuales[producto.id] : undefined;
+  if (porId && nombre.includes(normal(porId.nombre))) return porId.url;
+
   const texto = `${nombre} ${normal(producto.marca)}`;
   const kit = tiene(nombre, /\b(set|kit|combo|pack|paquete|trio)\b|\b3 (piezas|pzas|productos|pcs)\b/);
   const soloCrema = !tiene(nombre, /\b(shampoo|champu|acondicionador|conditioner)\b/);
