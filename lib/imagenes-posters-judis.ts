@@ -36,7 +36,6 @@ const postersIndividuales: Record<number, { nombre: string; url: string }> = {
   110: { nombre: "Timberland Cartera Trifold", url: "https://static.metricool.com/planner/202610/7322149-file-8050970878241834590.png" },
   191: { nombre: "Cartera Steve Madden para dama", url: "https://static.metricool.com/planner/202610/7322149-file-17940626417091160405.png" },
   129: { nombre: "Fruit Fusion Watermelon Whirl", url: "https://static.metricool.com/planner/202610/7322149-file-17378242748663783680.png" },
-  108: { nombre: "Victoria’s Secret Mini Fragrance Mist Set", url: "https://static.metricool.com/planner/202610/7322149-file-6266656840443874796.png" },
 };
 
 function normal(texto?: string | null) {
