@@ -31,7 +31,7 @@ export default function InventarioPage() {
 
     async function cargarProductos() {
       try {
-        const respuesta = await fetch("/api/productos", {
+        const respuesta = await fetch("/api/productos?admin=1", {
           cache: "no-store",
           signal: controller.signal,
         });
