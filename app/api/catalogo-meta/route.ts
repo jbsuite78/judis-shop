@@ -22,9 +22,10 @@ export async function GET(request: Request) {
 
     // SI PIDEN UNA IMAGEN
     if (imagenId) {
-      const producto = await prisma.producto.findUnique({
+      const producto = await prisma.producto.findFirst({
         where: {
           id: Number(imagenId),
+          visible: true,
         },
       });
 
@@ -74,6 +75,7 @@ export async function GET(request: Request) {
 
     // SI PIDEN EL CATÁLOGO
     const productos = await prisma.producto.findMany({
+      where: { visible: true },
       orderBy: {
         id: "desc",
       },
