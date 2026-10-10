@@ -20,8 +20,9 @@ const departamentos = [
   { titulo: "Calzado", breve: "Calzado", icono: "👟", tono: "from-[#e6eafa] to-[#f3f6ff]" },
   { titulo: "Belleza", breve: "Belleza", icono: "💄", tono: "from-[#ffe4ed] to-[#fff3f7]" },
   { titulo: "Ropa", breve: "Moda", icono: "👗", tono: "from-[#fcebdc] to-[#fff7ef]" },
+  { titulo: "Accesorios", breve: "Accesorios", icono: "🎀", tono: "from-[#fbe7f2] to-[#fff6fb]" },
   { titulo: "Artículos para Caballero", breve: "Caballero", icono: "⌚", tono: "from-[#e2f2f3] to-[#f4fcfc]" },
-  { titulo: "Joyería, Bisutería y Relojes", breve: "Accesorios", icono: "💎", tono: "from-[#e7e7ff] to-[#f5f4ff]" },
+  { titulo: "Joyería, Bisutería y Relojes", breve: "Joyería", icono: "💎", tono: "from-[#e7e7ff] to-[#f5f4ff]" },
   { titulo: "Hogar", breve: "Hogar", icono: "🏠", tono: "from-[#e8f5e5] to-[#f6fff3]" },
   { titulo: "Juguetes", breve: "Juguetes", icono: "🧸", tono: "from-[#fff0d9] to-[#fff9f1]" },
   { titulo: "Artículos de Temporada", breve: "Temporada", icono: "🎁", tono: "from-[#f8e2ef] to-[#fff5fa]" },
@@ -170,7 +171,7 @@ export default function DesktopStorefront() {
             </div>
             <Link href="/catalogo" className="rounded-full border border-[#eac9db] bg-white px-5 py-2.5 text-sm font-bold text-[#a61562] transition hover:bg-pink-50">Ver todas las categorías ↗</Link>
           </div>
-          <div className="grid grid-cols-5 gap-4 xl:grid-cols-10">
+          <div className="grid grid-cols-5 gap-4 xl:grid-cols-11">
             {departamentos.map((categoria) => (
               <Link
                 key={categoria.titulo}

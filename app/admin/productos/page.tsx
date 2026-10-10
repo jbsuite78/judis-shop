@@ -13,6 +13,7 @@ const categorias = [
   "Belleza",
   "Salud y Bienestar",
   "Ropa",
+  "Accesorios",
   "Artículos para Caballero",
   "Joyería, Bisutería y Relojes",
   "Hogar",

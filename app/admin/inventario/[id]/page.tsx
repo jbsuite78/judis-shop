@@ -23,6 +23,7 @@ const categorias = [
   "Calzado",
   "Belleza",
   "Ropa",
+  "Accesorios",
   "Hogar",
   "Cómputo y Videojuegos",
   "Bebés",

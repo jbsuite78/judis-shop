@@ -186,6 +186,7 @@ fetch("/api/productos", { method: "DELETE", headers: { "Content-Type": "applicat
     "Calzado",
     "Belleza",
     "Ropa",
+    "Accesorios",
     "Hogar",
     "Cómputo y Videojuegos",
     "Bebés",

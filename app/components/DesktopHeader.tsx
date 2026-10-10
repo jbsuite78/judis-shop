@@ -9,6 +9,7 @@ const enlaces = [
   { nombre: "Calzado", categoria: "Calzado" },
   { nombre: "Belleza", categoria: "Belleza" },
   { nombre: "Ropa", categoria: "Ropa" },
+  { nombre: "Accesorios", categoria: "Accesorios" },
   { nombre: "Hogar", categoria: "Hogar" },
   { nombre: "Juguetes", categoria: "Juguetes" },
   { nombre: "Deportes", categoria: "Deportes" },

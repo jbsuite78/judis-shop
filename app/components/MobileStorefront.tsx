@@ -19,6 +19,7 @@ const categorias = [
   ["Calzado", "👟", "Calzado"],
   ["Belleza", "💄", "Belleza"],
   ["Ropa", "👗", "Ropa"],
+  ["Accesorios", "🎀", "Accesorios"],
   ["Hogar", "🏠", "Hogar"],
   ["Juguetes", "🧸", "Juguetes"],
   ["Deportes", "🏀", "Deportes"],
