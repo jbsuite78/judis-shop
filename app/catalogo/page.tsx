@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { productos as productosBase } from "@/data/productos";
+import MobileNav from "../components/MobileNav";
 
 type Producto = {
   id?: number;
@@ -28,6 +29,8 @@ const [fotoSeleccionada, setFotoSeleccionada] = useState<Record<string, string>>
 
     const parametros = new URLSearchParams(window.location.search);
     const categoriaDesdeInicio = parametros.get("categoria");
+    const busquedaDesdeInicio = parametros.get("buscar");
+    if (busquedaDesdeInicio) setBusqueda(busquedaDesdeInicio);
 
     if (categoriaDesdeInicio) {
       setCategoriaSeleccionada(categoriaDesdeInicio);
@@ -265,35 +268,35 @@ const coincideCategoria =
   }
 
   return (
-    <main className="min-h-screen bg-slate-50 text-slate-900">
+    <main className="min-h-screen bg-[#fff9fc] pb-24 text-slate-900 md:pb-0">
       <header className="border-b border-pink-100 bg-white">
-        <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-4 px-6 py-5">
+        <div className="mx-auto flex max-w-7xl items-center justify-between gap-3 px-4 py-3 sm:px-6 sm:py-5">
           <div>
-            <h1 className="text-3xl font-black text-pink-600">
+            <h1 className="text-2xl font-black text-pink-600 sm:text-3xl">
               Judi&apos;s Shop
             </h1>
 
-            <p className="text-sm text-slate-500">
+            <p className="text-xs text-slate-500 sm:text-sm">
               Catálogo de productos originales
             </p>
           </div>
 
           <a
             href="/"
-            className="rounded-xl border border-pink-600 px-5 py-3 font-bold text-pink-600"
+            className="rounded-xl border border-pink-600 px-3 py-2 text-xs font-bold text-pink-600 sm:px-5 sm:py-3 sm:text-base"
           >
-            ← Volver al inicio
+            ← Inicio
           </a>
         </div>
       </header>
 
-      <section className="mx-auto max-w-7xl px-6 py-12">
+      <section className="mx-auto max-w-7xl px-4 py-6 sm:px-6 sm:py-12">
         <div className="mb-8">
           <p className="font-bold uppercase tracking-widest text-pink-600">
             Catálogo
           </p>
 
-          <h2 className="mt-2 text-4xl font-black">
+          <h2 className="mt-2 text-2xl font-black sm:text-4xl">
             Productos disponibles
           </h2>
 
@@ -302,13 +305,13 @@ const coincideCategoria =
           </p>
         </div>
 
-        <div className="mb-10 grid gap-4 rounded-2xl bg-white p-6 shadow-sm md:grid-cols-4">
+        <div className="mb-6 grid gap-3 rounded-2xl border border-pink-100 bg-white p-3 shadow-sm sm:mb-10 sm:gap-4 sm:p-6 md:grid-cols-4">
           <input
             type="text"
             value={busqueda}
             onChange={(evento) => setBusqueda(evento.target.value)}
             placeholder="Buscar producto..."
-            className="rounded-xl border border-slate-300 p-4"
+            className="min-w-0 rounded-xl border border-slate-300 p-3 text-sm sm:p-4 sm:text-base"
           />
 
           <select
@@ -316,7 +319,7 @@ const coincideCategoria =
             onChange={(evento) =>
               setCategoriaSeleccionada(evento.target.value)
             }
-            className="rounded-xl border border-slate-300 bg-white p-4"
+            className="min-w-0 rounded-xl border border-slate-300 bg-white p-3 text-sm sm:p-4 sm:text-base"
           >
             {categorias.map((categoria) => (
               <option key={categoria} value={categoria}>
@@ -361,25 +364,25 @@ const coincideCategoria =
             </button>
           </div>
         ) : (
-          <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+          <div className="grid grid-cols-2 gap-3 sm:gap-6 lg:grid-cols-3">
             {productosFiltrados.map((producto, indice) => (
               
  <div key={producto.id ?? `${producto.nombre}-${indice}`}>
 <article
                 className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm"
               >
-                <div className="flex h-64 items-center justify-center bg-gradient-to-br from-pink-100 to-purple-100">
+                <div className="flex h-36 items-center justify-center bg-gradient-to-br from-pink-100 to-purple-100 sm:h-64">
                   {producto.imagen ? (
                     <img
                      src={producto.imagen}
                       alt={producto.nombre}
                      onClick={() => setImagenAmpliada(producto.imagen)}
-                    className="w-full h-full object-contain p-2"
+                    className="h-full w-full object-contain p-1 sm:p-2"
                     />
                   ) : null}
                 </div>
 {producto.imagenes && producto.imagenes.length > 0 && (
-  <div className="flex gap-2 overflow-x-auto px-4 pb-3">
+  <div className="flex gap-1.5 overflow-x-auto px-2 pb-2 sm:gap-2 sm:px-4 sm:pb-3">
     {producto.imagenes.map((foto, index) => (
       <img
         key={index}
@@ -392,31 +395,31 @@ const coincideCategoria =
   setImagenAmpliada(foto);
 }}
         alt={`${producto.nombre} ${index + 2}`}
-        className="h-16 w-16 shrink-0 rounded-lg border object-cover"
+        className="h-10 w-10 shrink-0 rounded-lg border object-cover sm:h-16 sm:w-16"
       />
     ))}
   </div>
 )}
-                <div className="p-6">
+                <div className="p-3 sm:p-6">
                   {producto.marca && producto.marca.toLowerCase() !== "sin marca" && (
-  <p className="text-sm font-bold uppercase tracking-wider text-pink-600">
+  <p className="truncate text-[10px] font-bold uppercase tracking-wider text-pink-600 sm:text-sm">
     {producto.marca}
   </p>
 )}
 
-                  <h3 className="mt-2 text-xl font-black">
+                  <h3 className="mt-1 line-clamp-2 min-h-10 text-sm font-black sm:mt-2 sm:min-h-0 sm:text-xl">
                     {producto.nombre}
                   </h3>
 
-                  <p className="mt-2 text-sm text-slate-500">
+                  <p className="mt-2 hidden text-sm text-slate-500 sm:block">
                     {producto.categoria}
                   </p>
                   {producto.descripcion && (
-                  <p className="mt-3 text-sm leading-6 text-slate-600">
+                  <p className="mt-3 hidden text-sm leading-6 text-slate-600 sm:block">
                    {producto.descripcion}
                    </p>
                    )}
-                  <p className="mt-5 text-2xl font-black">
+                  <p className="mt-3 text-lg font-black text-pink-700 sm:mt-5 sm:text-2xl">
                     ${producto.precio.toLocaleString("es-MX")}
                   </p>
 <p
@@ -439,7 +442,7 @@ const coincideCategoria =
               {(producto.existencia ?? 0) > 0 ? (
 <>
 <div className="mt-5">
-  <label className="mb-2 block text-sm font-bold text-slate-700">
+  <label className="mb-1 block text-xs font-bold text-slate-700 sm:mb-2 sm:text-sm">
     Cantidad
   </label>
 
@@ -449,7 +452,7 @@ const coincideCategoria =
     onClick={(evento) => evento.stopPropagation()}
 onMouseDown={(evento) => evento.stopPropagation()}
 onChange={(evento) => evento.stopPropagation()}
-    className="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 font-bold text-slate-900"
+    className="w-full rounded-xl border border-slate-300 bg-white px-2 py-2 text-sm font-bold text-slate-900 sm:px-4 sm:py-3 sm:text-base"
   >
     {Array.from(
       { length: producto.existencia ?? 0 },
@@ -508,13 +511,13 @@ const cantidadSeleccionada = Number(selector?.value || 1);
 
    window.location.href = "/carrito";
   }}
-  className="mt-3 block w-full rounded-xl bg-slate-900 px-6 py-4 text-center text-lg font-bold text-white transition hover:bg-slate-800"
+  className="mt-3 block w-full rounded-xl bg-pink-600 px-2 py-3 text-center text-xs font-bold text-white transition hover:bg-pink-700 sm:px-6 sm:py-4 sm:text-lg"
 >
-  🛒 Agregar al carrito
+  🛒 Agregar
 </button>
 </>
 ) : (
-  <div className="mt-5 block w-full rounded-xl bg-slate-400 px-6 py-4 text-center text-lg font-bold text-white">
+  <div className="mt-5 block w-full rounded-xl bg-slate-400 px-2 py-3 text-center text-xs font-bold text-white sm:px-6 sm:py-4 sm:text-lg">
     🔴 AGOTADO
   </div>
 )}
@@ -538,6 +541,7 @@ const cantidadSeleccionada = Number(selector?.value || 1);
   </div>
 )}
       </section>
+      <MobileNav />
     </main>
   );
 }
