@@ -19,7 +19,7 @@ export default function VentasPage() {
 
   useEffect(() => {
   async function cargarProductos() {
-    const respuesta = await fetch("/api/productos");
+    const respuesta = await fetch("/api/productos?admin=1");
 
     if (!respuesta.ok) {
       return;
