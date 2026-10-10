@@ -89,12 +89,12 @@ export default function DesktopHeader() {
             <Link
               href={"/catalogo?categoria=" + encodeURIComponent(enlace.categoria)}
               key={enlace.categoria}
-              className="shrink-0 whitespace-nowrap text-[13px] font-semibold text-slate-650 transition hover:text-[#b7146c]"
+              className="shrink-0 whitespace-nowrap text-[13px] font-semibold text-slate-600 transition hover:text-[#b7146c]"
             >
               {enlace.nombre}
             </Link>
           ))}
-          <Link href="/#categorias" className="shrink-0 text-[13px] font-semibold text-slate-650 hover:text-[#b7146c]">Más categorías</Link>
+          <Link href="/#categorias" className="shrink-0 text-[13px] font-semibold text-slate-600 hover:text-[#b7146c]">Más categorías</Link>
         </div>
       </nav>
     </header>
