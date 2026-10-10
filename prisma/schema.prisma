@@ -20,6 +20,7 @@ model Producto {
   precio     Float
   costo      Float
   existencia Int
+  visible    Boolean  @default(true)
   imagen     String?
   imagenes String[] @default([])
   createdAt  DateTime @default(now())

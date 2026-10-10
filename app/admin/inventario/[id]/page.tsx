@@ -64,7 +64,7 @@ export default function EditarProductoPage() {
  
 useEffect(() => {
   async function cargarProducto() {
-    const respuesta = await fetch("/api/productos");
+    const respuesta = await fetch("/api/productos?admin=1");
     const productos: Producto[] = await respuesta.json();
 
     const idProducto = Number(params.id);

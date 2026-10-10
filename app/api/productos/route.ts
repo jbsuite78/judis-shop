@@ -74,7 +74,11 @@ function imagenesSeguras(imagenes: string[]) {
 
 export async function GET(request: Request) {
   try {
+    const solicitaAdmin = new URL(request.url).searchParams.get("admin") === "1";
+    if (solicitaAdmin && !hasAdminSession(request)) return unauthorizedResponse();
+    const admin = solicitaAdmin && hasAdminSession(request);
     const productos = await prisma.producto.findMany({
+      where: admin ? undefined : { visible: true },
       orderBy: {
         id: "desc",
       },
@@ -86,6 +90,7 @@ export async function GET(request: Request) {
         precio: true,
         costo: true,
         existencia: true,
+        visible: true,
         imagen: true,
         imagenes: true,
         marca: true,
@@ -105,6 +110,7 @@ export async function GET(request: Request) {
         precio,
         costo,
         existencia: Number(producto.existencia),
+        visible: producto.visible,
         utilidad: precio - costo,
         marca: producto.marca,
         categoria: producto.categoria,
@@ -121,7 +127,7 @@ export async function GET(request: Request) {
 
     const visibles = productosFinales.map(imagenVisibleProducto);
     // Nunca publicar costos ni utilidades a los visitantes; solo el admin autenticado los recibe.
-    const seguros = hasAdminSession(request) ? visibles : visibles.map(({ costo: _c, utilidad: _u, ...publico }) => publico);
+    const seguros = admin ? visibles : visibles.map(({ costo: _c, utilidad: _u, visible: _v, ...publico }) => publico);
     return Response.json(seguros, {
       status: 200,
       headers: {
@@ -564,5 +570,38 @@ export async function PUT(request: Request) {
         status: 500,
       }
     );
+  }
+}
+/**
+ * Oculta o reactiva un producto sin borrar datos, fotos ni inventario.
+ * El endpoint está protegido por la sesión administrativa y origen válido.
+ */
+export async function PATCH(request: Request) {
+  if (!isAdminMutation(request)) return unauthorizedResponse();
+  try {
+    const datos: unknown = await request.json();
+    if (!datos || typeof datos !== "object") {
+      return Response.json({ error: "Datos inválidos." }, { status: 400 });
+    }
+    const cuerpo = datos as { id?: unknown; visible?: unknown };
+    const id = Number(cuerpo.id);
+    if (!Number.isSafeInteger(id) || id <= 0 || typeof cuerpo.visible !== "boolean") {
+      return Response.json({ error: "Proporciona un producto y un estado de visibilidad válidos." }, { status: 400 });
+    }
+
+    const resultado = await prisma.producto.updateMany({
+      where: { id },
+      data: { visible: cuerpo.visible },
+    });
+    if (resultado.count === 0) {
+      return Response.json({ error: "Producto no encontrado." }, { status: 404 });
+    }
+    return Response.json(
+      { ok: true, id, visible: cuerpo.visible },
+      { headers: { "Cache-Control": "no-store" } }
+    );
+  } catch (error) {
+    console.error("ERROR VISIBILIDAD PRODUCTO:", error);
+    return Response.json({ error: "No se pudo actualizar la visibilidad del producto." }, { status: 500 });
   }
 }
