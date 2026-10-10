@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import { productos as productosBase } from "@/data/productos";
 import MobileNav from "../../components/MobileNav";
+import DesktopHeader from "../../components/DesktopHeader";
 
 type Producto = {
   id?: number;
@@ -77,7 +78,9 @@ const [imagenSeleccionada, setImagenSeleccionada] = useState(0);
   }
 
   return (
-    <main className="min-h-screen bg-[#fff9fc] px-4 pb-28 pt-6 text-slate-900 sm:px-6 sm:py-12">
+    <>
+      <DesktopHeader />
+      <main className="min-h-screen bg-[#fff9fc] px-4 pb-28 pt-6 text-slate-900 sm:px-6 sm:py-12">
       <div className="mx-auto max-w-6xl">
         <a
           href="/catalogo"
@@ -151,5 +154,6 @@ const [imagenSeleccionada, setImagenSeleccionada] = useState(0);
       </div>
       <MobileNav />
     </main>
+    </>
   );
 }
