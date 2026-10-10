@@ -74,7 +74,9 @@ function imagenesSeguras(imagenes: string[]) {
 
 export async function GET(request: Request) {
   try {
-    const admin = hasAdminSession(request);
+    const solicitaAdmin = new URL(request.url).searchParams.get("admin") === "1";
+    if (solicitaAdmin && !hasAdminSession(request)) return unauthorizedResponse();
+    const admin = solicitaAdmin && hasAdminSession(request);
     const productos = await prisma.producto.findMany({
       where: admin ? undefined : { visible: true },
       orderBy: {
