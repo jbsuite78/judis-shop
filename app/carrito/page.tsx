@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import MobileNav from "../components/MobileNav";
+import DesktopHeader from "../components/DesktopHeader";
 
 type ProductoCarrito = {
   id?: number;
@@ -29,7 +30,9 @@ const [formaPago, setFormaPago] = useState("");
   }, []);
 
   return (
-    <main className="min-h-screen bg-[#fff9fc] px-4 pb-28 pt-5 text-slate-900 sm:px-6 sm:py-12">
+    <>
+      <DesktopHeader />
+      <main className="min-h-screen bg-[#fff9fc] px-4 pb-28 pt-5 text-slate-900 sm:px-6 sm:py-12">
       <div className="mx-auto max-w-4xl">
         
 
@@ -215,5 +218,6 @@ Total del pedido: $${total.toLocaleString("es-MX")}`;
       </div>
       <MobileNav />
     </main>
+    </>
   );
 }

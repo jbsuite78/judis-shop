@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { productos as productosBase } from "@/data/productos";
 import MobileNav from "../components/MobileNav";
+import DesktopHeader from "../components/DesktopHeader";
 
 type Producto = {
   id?: number;
@@ -268,8 +269,9 @@ const coincideCategoria =
   }
 
   return (
-    <main className="min-h-screen bg-[#fff9fc] pb-24 text-slate-900 md:pb-0">
-      <header className="border-b border-pink-100 bg-white">
+    <main className="min-h-screen bg-[#fdfafd] pb-24 text-slate-900 md:pb-0">
+      <DesktopHeader />
+      <header className="border-b border-pink-100 bg-white md:hidden">
         <div className="mx-auto flex max-w-7xl items-center justify-between gap-3 px-4 py-3 sm:px-6 sm:py-5">
           <div>
             <h1 className="text-2xl font-black text-pink-600 sm:text-3xl">
@@ -290,13 +292,13 @@ const coincideCategoria =
         </div>
       </header>
 
-      <section className="mx-auto max-w-7xl px-4 py-6 sm:px-6 sm:py-12">
+      <section className="mx-auto max-w-[1400px] px-4 py-6 sm:px-6 sm:py-12 xl:px-10">
         <div className="mb-8">
           <p className="font-bold uppercase tracking-widest text-pink-600">
             Catálogo
           </p>
 
-          <h2 className="mt-2 text-2xl font-black sm:text-4xl">
+          <h2 className="mt-2 text-2xl font-black tracking-tight sm:text-4xl">
             Productos disponibles
           </h2>
 
@@ -305,7 +307,7 @@ const coincideCategoria =
           </p>
         </div>
 
-        <div className="mb-6 grid gap-3 rounded-2xl border border-pink-100 bg-white p-3 shadow-sm sm:mb-10 sm:gap-4 sm:p-6 md:grid-cols-4">
+        <div className="mb-6 grid gap-3 rounded-[22px] border border-[#f1e1eb] bg-white p-3 shadow-sm sm:mb-10 sm:gap-4 sm:p-6 lg:grid-cols-[2fr_1.2fr_auto]">
           <input
             type="text"
             value={busqueda}
@@ -364,14 +366,14 @@ const coincideCategoria =
             </button>
           </div>
         ) : (
-          <div className="grid grid-cols-2 gap-3 sm:gap-6 lg:grid-cols-3">
+          <div className="grid grid-cols-2 gap-3 sm:gap-6 lg:grid-cols-3 xl:grid-cols-4">
             {productosFiltrados.map((producto, indice) => (
               
  <div key={producto.id ?? `${producto.nombre}-${indice}`}>
 <article
-                className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm"
+                className="group h-full overflow-hidden rounded-[22px] border border-[#f1e3eb] bg-white shadow-[0_5px_19px_rgba(52,27,48,0.045)] transition duration-200 hover:-translate-y-1 hover:shadow-[0_12px_30px_rgba(88,31,67,0.1)]"
               >
-                <div className="flex h-36 items-center justify-center bg-gradient-to-br from-pink-100 to-purple-100 sm:h-64">
+                <div className="flex h-36 items-center justify-center bg-gradient-to-br from-[#fff5fa] to-[#f8f1ff] sm:h-64">
                   {producto.imagen ? (
                     <img
                      src={producto.imagen}
@@ -419,7 +421,7 @@ const coincideCategoria =
                    {producto.descripcion}
                    </p>
                    )}
-                  <p className="mt-3 text-lg font-black text-pink-700 sm:mt-5 sm:text-2xl">
+                  <p className="mt-3 text-lg font-black text-[#a91360] sm:mt-5 sm:text-2xl">
                     ${producto.precio.toLocaleString("es-MX")}
                   </p>
 <p
@@ -511,7 +513,7 @@ const cantidadSeleccionada = Number(selector?.value || 1);
 
    window.location.href = "/carrito";
   }}
-  className="mt-3 block w-full rounded-xl bg-pink-600 px-2 py-3 text-center text-xs font-bold text-white transition hover:bg-pink-700 sm:px-6 sm:py-4 sm:text-lg"
+  className="mt-3 block w-full rounded-xl bg-[#b7146c] px-2 py-3 text-center text-xs font-bold text-white transition hover:bg-[#8d0f50] sm:px-4 sm:py-4 sm:text-base"
 >
   🛒 Agregar
 </button>
