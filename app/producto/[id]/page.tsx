@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import { productos as productosBase } from "@/data/productos";
+import MobileNav from "../../components/MobileNav";
 
 type Producto = {
   id?: number;
@@ -76,7 +77,7 @@ const [imagenSeleccionada, setImagenSeleccionada] = useState(0);
   }
 
   return (
-    <main className="min-h-screen bg-slate-50 px-6 py-12 text-slate-900">
+    <main className="min-h-screen bg-[#fff9fc] px-4 pb-28 pt-6 text-slate-900 sm:px-6 sm:py-12">
       <div className="mx-auto max-w-6xl">
         <a
           href="/catalogo"
@@ -85,8 +86,8 @@ const [imagenSeleccionada, setImagenSeleccionada] = useState(0);
           ← Volver al catálogo
         </a>
 
-        <div className="mt-8 grid gap-10 rounded-3xl bg-white p-8 shadow-xl md:grid-cols-2">
-          <div className="flex min-h-96 items-center justify-center rounded-2xl bg-gradient-to-br from-pink-100 to-purple-100 p-6">
+        <div className="mt-6 grid gap-5 rounded-3xl bg-white p-4 shadow-xl sm:mt-8 sm:gap-10 sm:p-8 md:grid-cols-2">
+          <div className="flex min-h-64 items-center justify-center rounded-2xl bg-gradient-to-br from-pink-100 to-purple-100 p-3 sm:min-h-96 sm:p-6">
             {producto.imagen ? (
               <img
                 src={producto.imagen}
@@ -105,7 +106,7 @@ const [imagenSeleccionada, setImagenSeleccionada] = useState(0);
               {producto.marca}
             </p>
 
-            <h1 className="mt-3 text-4xl font-black">
+            <h1 className="mt-3 text-2xl font-black sm:text-4xl">
               {producto.nombre}
             </h1>
 
@@ -113,7 +114,7 @@ const [imagenSeleccionada, setImagenSeleccionada] = useState(0);
               Categoría: {producto.categoria}
             </p>
 
-            <p className="mt-8 text-4xl font-black text-slate-900">
+            <p className="mt-5 text-3xl font-black text-pink-700 sm:mt-8 sm:text-4xl">
               ${producto.precio.toLocaleString("es-MX")}
             </p>
 
@@ -148,6 +149,7 @@ const [imagenSeleccionada, setImagenSeleccionada] = useState(0);
           </div>
         </div>
       </div>
+      <MobileNav />
     </main>
   );
 }

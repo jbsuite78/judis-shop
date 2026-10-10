@@ -1,5 +1,6 @@
 "use client";
 import { useEffect, useState } from "react";
+import MobileStorefront from "./components/MobileStorefront";
 const categorias = [
   {
     nombre: "Bolsas y Carteras",
@@ -91,6 +92,9 @@ useEffect(() => {
   setCantidadCarrito(total);
 }, []);
   return (
+    <>
+      <div className="md:hidden"><MobileStorefront /></div>
+      <div className="hidden md:block">
     <main className="min-h-screen bg-slate-50 text-slate-900">
      <header className="sticky top-0 z-50 border-b border-pink-100 bg-white/95 backdrop-blur">
   <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-5 px-6 py-2">
@@ -290,5 +294,7 @@ useEffect(() => {
         </div>
       </footer>
     </main>
+      </div>
+    </>
   );
 }

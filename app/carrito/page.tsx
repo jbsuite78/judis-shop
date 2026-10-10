@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import MobileNav from "../components/MobileNav";
 
 type ProductoCarrito = {
   id?: number;
@@ -28,23 +29,23 @@ const [formaPago, setFormaPago] = useState("");
   }, []);
 
   return (
-    <main className="min-h-screen bg-slate-50 px-6 py-12 text-slate-900">
+    <main className="min-h-screen bg-[#fff9fc] px-4 pb-28 pt-5 text-slate-900 sm:px-6 sm:py-12">
       <div className="mx-auto max-w-4xl">
         
 
-        <div className="mt-10 rounded-3xl bg-white p-8 shadow-xl">
+        <div className="mt-2 rounded-3xl bg-white p-4 shadow-xl sm:mt-10 sm:p-8">
           <p className="text-sm font-bold uppercase tracking-[0.2em] text-pink-600">
             Judi&apos;s Shop
           </p>
 
-          <h1 className="mt-3 text-4xl font-black">🛒 Tu carrito</h1>
+          <h1 className="mt-3 text-2xl font-black sm:text-4xl">🛒 Tu carrito</h1>
 
           <p className="mt-4 text-slate-500">
             Aquí aparecerán los productos que agregues para comprar.
           </p>
 
           {carrito.length === 0 ? (
-            <div className="mt-10 rounded-2xl border border-dashed border-slate-300 p-10 text-center">
+            <div className="mt-8 rounded-2xl border border-dashed border-slate-300 p-5 text-center sm:mt-10 sm:p-10">
               <p className="text-xl font-bold">Tu carrito está vacío</p>
 
               <p className="mt-2 text-slate-500">
@@ -70,13 +71,13 @@ const [formaPago, setFormaPago] = useState("");
               {carrito.map((producto) => (
                 <div
                   key={producto.id}
-                  className="flex items-center gap-4 rounded-2xl border border-slate-200 p-4"
+                  className="flex items-center gap-3 rounded-2xl border border-slate-200 p-3 sm:gap-4 sm:p-4"
                 >
                   {producto.imagen ? (
                     <img
                       src={producto.imagen}
                       alt={producto.nombre}
-                      className="h-24 w-24 rounded-xl object-contain"
+                      className="h-16 w-16 shrink-0 rounded-xl object-contain sm:h-24 sm:w-24"
                     />
                   ) : null}
 
@@ -115,11 +116,11 @@ const [formaPago, setFormaPago] = useState("");
                   </div>
                 </div>
               ))}
-              <div className="mt-8 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+              <div className="mt-8 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-6">
   <div className="flex items-center justify-between">
     <span className="text-lg font-bold">Total del pedido</span>
 
-    <span className="text-2xl font-black text-pink-600">
+    <span className="text-xl font-black text-pink-600 sm:text-2xl">
       $
       {carrito
         .reduce(
@@ -212,6 +213,7 @@ Total del pedido: $${total.toLocaleString("es-MX")}`;
           )}
         </div>
       </div>
+      <MobileNav />
     </main>
   );
 }
