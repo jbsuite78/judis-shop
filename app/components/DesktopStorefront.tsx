@@ -213,7 +213,7 @@ export default function DesktopStorefront() {
         <div className="mx-auto grid max-w-[1400px] gap-10 px-6 py-12 md:grid-cols-3 xl:px-10">
           <div>
             <div className="flex items-center gap-3">
-              <img src="/judis-logo.jpeg" alt="" className="h-12 w-12 rounded-full object-cover" />
+              <img src="/judis-logo-halloween.webp" alt="" className="h-12 w-12 rounded-full object-cover" />
               <span className="text-xl font-black text-[#a51361]">Judi&apos;s Shop</span>
             </div>
             <p className="mt-3 max-w-xs text-sm leading-6 text-slate-500">Productos originales seleccionados en Estados Unidos para ti. Entregas en Monterrey y su área metropolitana.</p>

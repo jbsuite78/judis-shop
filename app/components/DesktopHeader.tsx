@@ -53,7 +53,7 @@ export default function DesktopHeader() {
 
       <div className="mx-auto flex max-w-[1400px] items-center gap-5 px-6 py-4 xl:gap-8 xl:px-10">
         <Link href="/" className="flex shrink-0 items-center gap-3" aria-label="Judi's Shop - inicio">
-          <img src="/judis-logo.jpeg" alt="" className="h-[62px] w-[62px] rounded-full border-2 border-pink-100 object-cover shadow-sm" />
+          <img src="/judis-logo-halloween.webp" alt="" className="h-[62px] w-[62px] rounded-full border-2 border-pink-100 object-cover shadow-sm" />
           <div className="leading-tight">
             <span className="block text-2xl font-black tracking-[-0.045em] text-[#ae155e] xl:text-[28px]">Judi&apos;s Shop</span>
             <span className="block text-[11px] font-semibold tracking-wide text-slate-500">SHOPPING &amp; ORIGINALS</span>
