@@ -37,8 +37,8 @@ export const metadata: Metadata = {
   },
 
   icons: {
-    icon: "/icon-192.png",
-    apple: "/icon-192.png",
+    icon: "/judis-halloween-icon-192.png",
+    apple: "/judis-halloween-icon-180.png",
   },
 
   manifest: "/manifest.webmanifest",
