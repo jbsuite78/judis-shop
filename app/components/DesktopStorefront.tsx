@@ -170,7 +170,7 @@ export default function DesktopStorefront() {
                   </Link>
                   <div className="flex flex-1 flex-col p-4">
                     <p className="truncate text-[11px] font-extrabold uppercase tracking-wide text-[#b7146c]">{producto.marca && producto.marca.toLowerCase() !== "sin marca" ? producto.marca : producto.categoria || "Judi's Shop"}</p>
-                    <Link href={producto.id != null ? "/producto/" + producto.id : "/catalogo"} className="mt-2 line-clamp-2 min-h-11 text-sm font-bold leading-[22px] text-[#30252e] transition hover:text-[#b7146c]">{producto.nombre}</Link>
+                    <Link href={producto.id != null ? "/producto/" + producto.id : "/catalogo"} className="mt-2 min-h-11 text-sm font-bold leading-[22px] text-[#30252e] transition hover:text-[#b7146c]">{producto.nombre}</Link>
                     <p className="mt-3 text-2xl font-black text-[#9f1159]">{"$" + Number(producto.precio).toLocaleString("es-MX")}</p>
                     <p className="mt-1 text-[11px] font-semibold text-emerald-700">● Disponible</p>
                     <button

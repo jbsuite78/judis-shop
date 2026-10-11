@@ -79,3 +79,5 @@ body {
   .halloween-primary, .halloween-secondary { width: 100%; max-width: 230px; font-size: 13px; }
   .halloween-category-panel { margin-top: 24px; padding: 18px 16px; }
 }
+
+.halloween-title-link { color: #ffd0a1; }

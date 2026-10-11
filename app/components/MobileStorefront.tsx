@@ -143,7 +143,7 @@ export default function MobileStorefront() {
         <section className="pt-5">
           <div className="halloween-section-title mb-4 flex items-end justify-between gap-3">
             <div><p className="text-[10px] font-black uppercase tracking-[0.2em] text-pink-600">Descubre tu favorito</p><h2 className="mt-1 text-xl font-black">Recién llegados</h2></div>
-            <Link href="/catalogo" className="text-xs font-extrabold text-pink-600">Ver catálogo →</Link>
+            <Link href="/catalogo" className="halloween-title-link text-xs font-extrabold">Ver catálogo →</Link>
           </div>
           {cargando && <p role="status" className="rounded-2xl bg-white p-8 text-center text-sm text-slate-500">Cargando novedades...</p>}
           {errorCarga && <div className="rounded-2xl bg-white p-6 text-center text-sm text-slate-600">No pudimos cargar las novedades ahora. <Link href="/catalogo" className="font-bold text-pink-600 underline">Abrir catálogo</Link></div>}
@@ -157,7 +157,7 @@ export default function MobileStorefront() {
                 </Link>
                 <div className="flex flex-1 flex-col px-3 pb-3 pt-2.5">
                   <p className="truncate text-[10px] font-black uppercase tracking-wide text-pink-600">{producto.marca && producto.marca !== "Sin marca" ? producto.marca : producto.categoria || "Judi's Shop"}</p>
-                  <Link href={producto.id != null ? "/producto/" + producto.id : "/catalogo"} className="mt-1 line-clamp-2 min-h-9 text-[13px] font-extrabold leading-[18px]">{producto.nombre}</Link>
+                  <Link href={producto.id != null ? "/producto/" + producto.id : "/catalogo"} className="mt-1 min-h-9 text-[13px] font-extrabold leading-[18px]">{producto.nombre}</Link>
                   <p className="mt-2 text-lg font-black text-[#c21871]">{"$" + Number(producto.precio).toLocaleString("es-MX")}</p>
                   <button type="button" onClick={() => agregar(producto)} disabled={producto.id == null || (producto.existencia ?? 0) < 1}
                     className="mt-2.5 w-full rounded-xl bg-pink-600 px-2 py-2.5 text-xs font-extrabold text-white active:scale-[0.98] disabled:bg-slate-400">
