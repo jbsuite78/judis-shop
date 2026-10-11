@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import DesktopHeader from "./DesktopHeader";
+import HalloweenHero from "./HalloweenHero";
 
 type Producto = {
   id?: number;
@@ -94,57 +95,11 @@ export default function DesktopStorefront() {
   }
 
   return (
-    <div className="min-h-screen bg-[#fdfafd] text-[#2d2230]">
+    <div className="halloween-store min-h-screen text-[#2d2230]">
       <DesktopHeader />
 
       <main className="mx-auto max-w-[1400px] px-6 pb-20 xl:px-10">
-        <section aria-label="Destacados de Judi's Shop" className="mt-7 grid grid-cols-1 gap-5 lg:grid-cols-12">
-          <div className="relative min-h-[360px] overflow-hidden rounded-[27px] bg-gradient-to-br from-[#f7e1ee] via-[#fcecf6] to-[#eae0ff] shadow-[0_14px_38px_rgba(91,28,70,0.09)] lg:col-span-8">
-            <div className="pointer-events-none absolute -right-24 -top-24 h-80 w-80 rounded-full border-[42px] border-white/25" />
-            <div className="pointer-events-none absolute -bottom-28 right-28 h-48 w-48 rounded-full bg-white/20" />
-            <div className="relative grid h-full min-h-[360px] grid-cols-[1.1fr_0.9fr] items-center gap-3 px-8 py-8 xl:px-11">
-              <div className="z-10">
-                <div className="inline-flex items-center rounded-full border border-[#e9b7d4] bg-white/70 px-4 py-2 text-[11px] font-black uppercase tracking-[0.15em] text-[#ae155e]">
-                  🛍️ Bienvenidos a Judi&apos;s Shop
-                </div>
-                <h1 className="mt-5 max-w-[440px] text-[34px] font-black leading-[1.1] tracking-[-0.045em] text-[#41132f] xl:text-[46px]">
-                  Tus marcas favoritas, más cerca de ti.
-                </h1>
-                <p className="mt-4 max-w-[360px] text-sm font-medium leading-7 text-[#6f5063] xl:text-base">
-                  Bolsas, perfumes, ropa, calzado y mucho más. Productos originales seleccionados en Estados Unidos.
-                </p>
-                <Link href="/catalogo" className="mt-6 inline-flex items-center gap-3 rounded-[14px] bg-[#b7146c] px-6 py-3.5 text-sm font-black text-white shadow-[0_7px_20px_rgba(183,20,108,0.2)] transition hover:-translate-y-0.5 hover:bg-[#8d0f50]">
-                  Explorar productos <span aria-hidden="true">→</span>
-                </Link>
-              </div>
-              <div className="relative flex min-w-0 items-center justify-center">
-                <div className="absolute h-[260px] w-[260px] rounded-full bg-gradient-to-br from-white/90 to-[#eec7e1]/65 blur-[1px] xl:h-[300px] xl:w-[300px]" />
-                <img
-                  src="/marcas-judis.jpeg"
-                  alt="Selección de marcas de Judi's Shop"
-                  className="relative z-10 max-h-[272px] w-full max-w-[340px] rounded-[22px] border-[7px] border-white/80 bg-white object-contain shadow-[0_22px_48px_rgba(108,30,75,0.16)] [transform:rotate(3deg)]"
-                />
-              </div>
-            </div>
-          </div>
-
-          <div className="grid gap-5 sm:grid-cols-2 lg:col-span-4 lg:grid-cols-1">
-            <div className="relative flex min-h-[166px] flex-col justify-center overflow-hidden rounded-[25px] bg-[#661343] px-7 py-6 text-white shadow-[0_12px_28px_rgba(78,16,51,0.12)]">
-              <div className="pointer-events-none absolute -right-8 -top-10 h-44 w-44 rounded-full border-[28px] border-white/10" />
-              <p className="relative text-[11px] font-black uppercase tracking-[0.2em] text-[#ffcade]">Servicio personal shopper</p>
-              <h2 className="relative mt-2 text-2xl font-black leading-tight">¿Buscas algo especial?</h2>
-              <p className="relative mt-2 text-[13px] text-white/80">Te ayudamos a conseguirlo en USA.</p>
-              <a href="https://wa.me/528181697776" target="_blank" rel="noopener noreferrer" className="relative mt-4 self-start rounded-xl bg-white px-4 py-2.5 text-xs font-extrabold text-[#7d164d] transition hover:bg-[#ffe2ee]">Solicitar por WhatsApp ↗</a>
-            </div>
-            <div className="relative flex min-h-[166px] flex-col justify-center overflow-hidden rounded-[25px] border border-[#f1d4e3] bg-[#fff1f7] px-7 py-6">
-              <div className="pointer-events-none absolute -bottom-10 -right-6 text-[100px] opacity-10">🎁</div>
-              <p className="relative text-[11px] font-black uppercase tracking-[0.2em] text-[#c03a82]">Tu tienda, tu estilo</p>
-              <h2 className="relative mt-2 text-2xl font-black text-[#42182d]">Compra fácil y segura</h2>
-              <p className="relative mt-2 text-sm text-[#805a6e]">Efectivo, transferencia o tarjeta.</p>
-              <Link href="/catalogo" className="relative mt-4 self-start text-xs font-black text-[#a91360] hover:underline">Descubre el catálogo →</Link>
-            </div>
-          </div>
-        </section>
+        <HalloweenHero />
 
         <section aria-label="Beneficios de comprar en Judi's Shop" className="mt-6 grid grid-cols-2 gap-3 rounded-2xl border border-[#f3e0ec] bg-white px-6 py-5 shadow-sm xl:grid-cols-4">
           {[
@@ -163,7 +118,7 @@ export default function DesktopStorefront() {
           ))}
         </section>
 
-        <section id="categorias" className="scroll-mt-48 pt-15">
+        <section id="categorias" className="halloween-category-panel scroll-mt-48">
           <div className="mb-6 flex items-end justify-between gap-4">
             <div>
               <p className="text-xs font-extrabold uppercase tracking-[0.19em] text-[#c12c80]">Compra por departamento</p>
@@ -188,7 +143,7 @@ export default function DesktopStorefront() {
         </section>
 
         <section className="pt-16" aria-label="Últimos productos disponibles">
-          <div className="mb-6 flex items-end justify-between">
+          <div className="halloween-section-title mb-6 flex items-end justify-between">
             <div>
               <p className="text-xs font-extrabold uppercase tracking-[0.19em] text-[#c12c80]">Seleccionados para ti</p>
               <h2 className="mt-2 text-[30px] font-black tracking-tight">Novedades en Judi&apos;s Shop</h2>
