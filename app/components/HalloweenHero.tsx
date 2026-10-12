@@ -9,7 +9,7 @@ export default function HalloweenHero() {
         <p className="halloween-date">McAllen · 17 y 18 de octubre</p>
         <p className="halloween-description">Mándanos tus pedidos desde ahora.<br />Compramos por encargo para ti.</p>
         <div className="halloween-actions">
-          <a className="halloween-primary" href="https://wa.me/528181697776" target="_blank" rel="noopener noreferrer">Envía tu pedido ↗</a>
+          <a className="halloween-primary" href="https://pedidos.judisshop.com.mx/">Envía tu pedido ↗</a>
           <Link className="halloween-secondary" href="/catalogo">Ver catálogo →</Link>
         </div>
       </div>
