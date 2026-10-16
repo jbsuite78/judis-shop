@@ -1,6 +1,11 @@
 export default function AdminPage() {
   const opciones = [
     {
+      titulo: "📊 Estadísticas de visitas",
+      descripcion: "Consultar visitantes, páginas más vistas y origen del tráfico",
+      href: "/admin/estadisticas",
+    },
+    {
       titulo: "📦 Inventario",
       descripcion: "Ver existencias, precios, costos y utilidad",
       href: "/admin/inventario",
