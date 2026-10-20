@@ -4,11 +4,13 @@ import { ChangeEvent, useEffect, useState } from "react";
 import Link from "next/link";
 import { CATEGORIAS_JUDIS, nombreDesdeArchivo, sugerirCategoria } from "@/lib/carga-masiva-judis";
 import { crearPosterJudi } from "@/lib/crear-poster-judis";
+import { leerNombreDePoster } from "@/lib/ocr-nombre-poster-judis";
 
 type Articulo = {
   id: string; archivo: File; fotoUrl: string; nombre: string; marca: string;
   categoria: string; descripcion: string; precio: string; costo: string; existencia: string;
   incluir: boolean; poster?: File; posterUrl?: string; analizando?: boolean; aviso?: string;
+  nombreEditado?: boolean;
 };
 const borde = "mt-1 w-full rounded-xl border border-pink-200 bg-white px-3 py-2.5 text-sm text-slate-900 outline-none focus:border-pink-500";
 const lista: string[] = [...CATEGORIAS_JUDIS];
@@ -69,30 +71,62 @@ export default function CargaMasiva() {
     }));
   }
   async function identificar(a:Articulo) {
+    let resultado:{nombre?:string;marca?:string;categoria?:string;descripcion?:string;seguro?:boolean}|null=null;
+    let modo:"ia"|"ocr"|"archivo"="archivo";
+    let errorOCR=false;
     try {
-      const pequeña=await convertirJpeg(a.archivo,720,.68);
-      const dataUrl=await new Promise<string>((resolve,reject)=>{
-        const lector=new FileReader();lector.onload=()=>resolve(String(lector.result));
-        lector.onerror=()=>reject(new Error("Error al leer la imagen."));lector.readAsDataURL(pequeña);
-      });
-      const res=await fetch("/api/carga-masiva/identificar",{
-        method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({imagen:dataUrl})
-      });
-      if(!res.ok)throw new Error("No se pudo identificar");
-      const d=await res.json();
+      // Prioriza la identificación visual cuando la tienda tiene un servicio de IA configurado.
+      if(ia) {
+        try {
+          const pequeña=await convertirJpeg(a.archivo,1000,.75);
+          const dataUrl=await new Promise<string>((resolve,reject)=>{
+            const lector=new FileReader();lector.onload=()=>resolve(String(lector.result));
+            lector.onerror=()=>reject(new Error("No se pudo leer la fotografía."));lector.readAsDataURL(pequeña);
+          });
+          const res=await fetch("/api/carga-masiva/identificar",{
+            method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({imagen:dataUrl})
+          });
+          if(res.ok) {
+            const d=await res.json();
+            if(typeof d.nombre==="string"&&d.nombre.trim()){
+              resultado=d;modo="ia";
+            }
+          }
+        } catch { /* El lector local seguirá funcionando aunque falle el servicio de IA. */ }
+      }
+      // Lee las palabras impresas en el póster directamente en el navegador, sin API de pago.
+      if(!resultado) {
+        try {
+          const jpeg=await convertirJpeg(a.archivo,1600,.92);
+          const nombre=await leerNombreDePoster(jpeg);
+          if(nombre){resultado={nombre};modo="ocr";}
+        }catch {errorOCR=true;}
+      }
       setArticulos(actual=>actual.map(item=>{
         if(item.id!==a.id)return item;
-        const nombre=item.nombre || String(d.nombre||"");
-        const categoria=item.categoria || String(d.categoria||"") || sugerirCategoria(nombre);
-        return {...item,nombre,categoria,
-          marca:item.marca==="Sin marca"?String(d.marca||"Sin marca"):item.marca,
-          descripcion:item.descripcion || String(d.descripcion||""),
-          analizando:false,aviso:d.seguro?"Identificado; revisa los datos.":"Verifica nombre y categoría."
+        const propuesto=String(resultado?.nombre??"").trim();
+        const nombre=item.nombreEditado?item.nombre:propuesto||item.nombre;
+        const categoria=item.categoria||String(resultado?.categoria||"")||sugerirCategoria(nombre);
+        const marca=item.marca==="Sin marca"&&resultado?.marca?String(resultado.marca):item.marca;
+        return {
+          ...item,nombre,categoria,marca,analizando:false,
+          // No reemplazar descripciones escritas por el dueño sin su permiso.
+          aviso:propuesto
+            ? "✅ Nombre detectado del póster. Confírmalo antes de publicar."+(modo==="ocr"?" (Lectura automática del texto).":"")
+            : item.nombre
+              ? "⚠️ Se utilizó el nombre del archivo. Confirma que sea correcto."
+              : errorOCR
+                ? "⚠️ No se pudo leer el texto del póster. Escribe el nombre o toca «Volver a leer»."
+                : "⚠️ No se identificó un nombre confiable. Puedes escribirlo o volver a leer.",
         };
       }));
-    }catch{
-      cambiar(a.id,{analizando:false,aviso:"Identificación no disponible. Completa los campos."},false);
+    }catch {
+      cambiar(a.id,{analizando:false,aviso:"⚠️ No se pudo detectar el nombre. Puedes escribirlo manualmente."},false);
     }
+  }
+  async function reintentarNombre(a:Articulo) {
+    cambiar(a.id,{analizando:true,aviso:"🔎 Volviendo a leer el nombre del póster…"},false);
+    await identificar({...a,nombreEditado:false});
   }
   function seleccionar(evento:ChangeEvent<HTMLInputElement>) {
     const archivos=Array.from(evento.target.files||[]);
@@ -107,12 +141,12 @@ export default function CargaMasiva() {
     const nuevos:Articulo[]=permitidos.map(archivo=>{
       const nombre=nombreDesdeArchivo(archivo.name);
       return {id:crypto.randomUUID(),archivo,fotoUrl:URL.createObjectURL(archivo),
-        nombre,marca:"Sin marca",categoria:sugerirCategoria(nombre),descripcion:"",
-        precio:"",costo:"0",existencia:"1",incluir:true,analizando:ia,
-        aviso:ia?"Identificando fotografía…":""};
+         nombre,marca:"Sin marca",categoria:sugerirCategoria(nombre),descripcion:"",
+        precio:"",costo:"0",existencia:"1",incluir:true,analizando:true,nombreEditado:false,
+        aviso:"🔎 Leyendo el nombre escrito en el póster…"};
     });
     setArticulos(actual=>[...actual,...nuevos]);
-    if(ia)void (async()=>{for(const articulo of nuevos){await identificar(articulo);}})();
+    void (async()=>{for(const articulo of nuevos){await identificar(articulo);}})();
   }
   function quitar(a:Articulo) {
     URL.revokeObjectURL(a.fotoUrl);if(a.posterUrl)URL.revokeObjectURL(a.posterUrl);
@@ -233,12 +267,12 @@ export default function CargaMasiva() {
         </div>
         <section className="mt-6 rounded-3xl bg-white p-5 shadow-sm sm:p-7">
           <h2 className="text-xl font-black">1. Subir fotos o pósteres ya elaborados</h2>
-          <p className="mt-2 text-sm text-slate-600">Una imagen por producto, máximo 20. Si ya hiciste tu póster, súbelo directamente: se utilizará tal cual. Crear un póster nuevo es opcional. Nada se publica sin tu aprobación.</p>
+          <p className="mt-2 text-sm text-slate-600">Una imagen por producto, máximo 20. Si ya hiciste tu póster, súbelo directamente: intentaremos leer su nombre del texto impreso. Crear un póster nuevo es opcional. Nada se publica sin tu aprobación.</p>
           <input type="file" accept="image/*" multiple disabled={ocupado}
             onChange={seleccionar} className="mt-4 block w-full rounded-xl border-2 border-dashed border-pink-300 bg-pink-50 p-5 text-sm"/>
-          <p className="mt-3 text-xs text-slate-500">{ia?
-            "La IA propone nombre, marca y categoría a partir de cada foto; confirma que sean correctos.":
-            "El reconocimiento visual por IA aún no está configurado. Puedes escribir los datos; si el nombre del archivo es descriptivo, se propondrá su categoría."}</p>
+          <p className="mt-3 text-xs text-slate-500">El nombre se propone automáticamente leyendo el texto del póster.
+            {ia?" Además, se intentará identificar marca y categoría con IA.": " El lector de texto funciona sin una API de IA configurada."}
+            {" "}La primera lectura puede tardar un poco; revisa siempre el resultado.</p>
         </section>
         {articulos.length>0 && <>
           <section className="mt-6 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-pink-200 bg-white p-4">
@@ -286,8 +320,15 @@ export default function CargaMasiva() {
                     <input id={"nombre-"+a.id} value={a.nombre} disabled={ocupado} maxLength={180} className={borde} placeholder="Nombre y variante del producto (del póster)"
                       onChange={e=>{
                         const nombre=e.target.value;
-                        cambiar(a.id,{nombre,categoria:a.categoria||sugerirCategoria(nombre)});
+                        cambiar(a.id,{nombre,nombreEditado:true,categoria:a.categoria||sugerirCategoria(nombre)});
                       }}/>
+                    <div className="mt-2 flex items-center justify-between gap-2">
+                      <span className="text-xs font-normal text-slate-500">Sugerencia automática: confirma la marca y presentación.</span>
+                      <button type="button" disabled={ocupado||a.analizando} onClick={()=>reintentarNombre(a)}
+                        className="shrink-0 rounded-lg bg-purple-50 px-3 py-2 text-xs font-bold text-purple-800 disabled:opacity-50">
+                        {a.analizando?"Leyendo…":"🔎 Volver a leer"}
+                      </button>
+                    </div>
                   </label>
                   <label className="text-sm font-semibold">Categoría
                     <select value={a.categoria} disabled={ocupado} className={borde}
