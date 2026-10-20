@@ -87,8 +87,8 @@ export default function CargaMasiva() {
     const archivos=Array.from(evento.target.files||[]);
     evento.target.value="";
     if(!archivos.length)return;
-    const permitidos=archivos.filter(f=>["image/jpeg","image/png","image/webp"].includes(f.type));
-    if(permitidos.length!==archivos.length){setMensaje("Se omitieron archivos que no son JPG, PNG o WebP.");}
+    const permitidos=archivos.filter(f=>["image/jpeg","image/png","image/webp","image/heic","image/heif"].includes(f.type));
+    if(permitidos.length!==archivos.length){setMensaje("Se omitieron archivos que no son imágenes compatibles.");}
     if(articulos.length+permitidos.length>20) {
       setMensaje("Puedes preparar máximo 20 artículos por lote.");
       return;
@@ -110,6 +110,7 @@ export default function CargaMasiva() {
   async function generar() {
     const elegidos=articulos.filter(a=>a.incluir);
     if(!elegidos.length){setMensaje("Selecciona al menos un artículo.");return;}
+    if(elegidos.some(a=>a.analizando)){setMensaje("Espera a que termine la identificación de las fotos.");return;}
     if(elegidos.some(a=>!a.nombre.trim() || !a.categoria || !a.precio.trim() ||
       !Number.isFinite(Number(a.precio)) || Number(a.precio)<0)) {
       setMensaje("Completa nombre, categoría y precio de todos los artículos seleccionados.");
@@ -183,7 +184,7 @@ export default function CargaMasiva() {
         <section className="mt-6 rounded-3xl bg-white p-5 shadow-sm sm:p-7">
           <h2 className="text-xl font-black">1. Seleccionar fotografías</h2>
           <p className="mt-2 text-sm text-slate-600">Una foto por producto, máximo 20. Se guardará también la foto original. Las fotos no se publican hasta tu aprobación.</p>
-          <input type="file" accept="image/jpeg,image/png,image/webp" multiple disabled={ocupado}
+          <input type="file" accept="image/*" multiple disabled={ocupado}
             onChange={seleccionar} className="mt-4 block w-full rounded-xl border-2 border-dashed border-pink-300 bg-pink-50 p-5 text-sm"/>
           <p className="mt-3 text-xs text-slate-500">{ia?
             "La IA propone nombre, marca y categoría a partir de cada foto; confirma que sean correctos.":
@@ -250,7 +251,7 @@ export default function CargaMasiva() {
                       value={a.precio} className={borde} placeholder="Ej. 450"
                       onChange={e=>cambiar(a.id,{precio:e.target.value})}/>
                   </label>
-                  <label className="text-sm font-semibold">Costo ($) (0 si aún no lo sabes)
+                  <label className="text-sm font-semibold">Costo ($) (0 si todavía es desconocido)
                     <input type="number" inputMode="decimal" min="0" step=".01" disabled={ocupado}
                       value={a.costo} className={borde}
                       onChange={e=>cambiar(a.id,{costo:e.target.value})}/>
@@ -273,7 +274,7 @@ export default function CargaMasiva() {
           <section className="mt-5 rounded-2xl bg-white p-5 text-sm text-slate-600">
             <strong className="text-slate-900">2. Revisión y publicación.</strong> Comprueba que la foto, presentación,
             categoría y precio correspondan a cada artículo. Pulsa «Crear pósteres» después de completar los datos;
-            después «Publicar revisados» para agregar el lote al catálogo. Los costos no aparecen en la web.
+            después «Publicar revisados» para agregar el lote al catálogo. Los costos no aparecen en la web. Si capturas costo 0, la utilidad del inventario no será exacta hasta que lo actualices.
           </section>
         </>}
         {(mensaje||progreso)&&<p role="status" className="mt-5 rounded-2xl border border-pink-200 bg-white p-4 text-sm font-semibold text-slate-800">{progreso||mensaje}</p>}
