@@ -14,6 +14,44 @@ type Articulo = {
 };
 const borde = "mt-1 w-full rounded-xl border border-pink-200 bg-white px-3 py-2.5 text-sm text-slate-900 outline-none focus:border-pink-500";
 const lista: string[] = [...CATEGORIAS_JUDIS];
+type ErrorValidacion = { id: string; campo: string; detalle: string };
+function monedaValida(valor: string): boolean {
+  if (!valor.trim()) return false;
+  const numero = Number(valor);
+  return Number.isFinite(numero) && numero >= 0 && numero <= 10_000_000 &&
+    Math.abs(numero * 100 - Math.round(numero * 100)) < 0.000001;
+}
+function claveProducto(valor: string): string {
+  return valor.normalize("NFD").replace(/[\\u0300-\\u036f]/g, "").trim().toLowerCase().replace(/\\s+/g, " ");
+}
+function validarParaPublicar(articulos: Articulo[]): ErrorValidacion[] {
+  const errores: ErrorValidacion[] = [];
+  const vistos = new Map<string, number>();
+  articulos.forEach((a, indice) => {
+    if (!a.incluir) return;
+    const anotar = (campo: string, detalle: string) => errores.push({ id: a.id, campo, detalle });
+    if (!a.nombre.trim() || a.nombre.trim().length > 180) anotar("nombre", "Escribe el nombre completo del producto.");
+    if (!lista.includes(a.categoria)) anotar("categoria", "Selecciona una categoría válida.");
+    if (!monedaValida(a.precio)) anotar("precio", "Captura un precio válido (máximo 2 decimales).");
+    if (!monedaValida(a.costo)) anotar("costo", "Captura el costo; puedes dejar 0 si aún lo desconoces.");
+    if (!a.marca.trim() || a.marca.trim().length > 100) anotar("marca", "Revisa la marca del producto.");
+    if (!Number.isSafeInteger(Number(a.existencia)) || a.existencia.trim() === "" ||
+        Number(a.existencia) < 0 || Number(a.existencia) > 1_000_000) {
+      anotar("existencia", "Indica una existencia válida en piezas.");
+    }
+    if (a.nombre.trim() && a.marca.trim() && lista.includes(a.categoria)) {
+      const clave = [a.nombre, a.marca, a.categoria].map(claveProducto).join("|");
+      const anterior = vistos.get(clave);
+      if (anterior !== undefined) {
+        anotar("repetido", "Coincide con el producto " + (anterior + 1) +
+          ". Distingue la marca, modelo o variante; si es el mismo artículo, captura las unidades en existencia.");
+      } else {
+        vistos.set(clave, indice);
+      }
+    }
+  });
+  return errores;
+}
 
 async function convertirJpeg(archivo: File, maximo: number, calidad: number): Promise<File> {
   const url = URL.createObjectURL(archivo);
@@ -52,6 +90,7 @@ export default function CargaMasiva() {
   const [ocupado,setOcupado]=useState(false);
   const [generandoDescripcionId,setGenerandoDescripcionId]=useState<string|null>(null);
   const [mensaje,setMensaje]=useState("");
+  const [mostrarErrores,setMostrarErrores]=useState(false);
   const [progreso,setProgreso]=useState("");
   useEffect(()=>{
     fetch("/api/carga-masiva/identificar",{cache:"no-store"})
@@ -137,6 +176,7 @@ export default function CargaMasiva() {
   }
   function seleccionar(evento:ChangeEvent<HTMLInputElement>) {
     const archivos=Array.from(evento.target.files||[]);
+    setMostrarErrores(false);
     evento.target.value="";
     if(!archivos.length)return;
     const permitidos=archivos.filter(f=>["image/jpeg","image/png","image/webp","image/heic","image/heif"].includes(f.type));
@@ -217,12 +257,16 @@ export default function CargaMasiva() {
   async function publicar() {
     const elegidos=articulos.filter(a=>a.incluir);
     if(!elegidos.length){setMensaje("Selecciona los productos que vas a publicar.");return;}
-    const incorrectos=elegidos.filter(a=>!a.nombre.trim() || !a.categoria ||
-      a.precio.trim()==="" || Number(a.precio)<0 || !Number.isFinite(Number(a.precio)) ||
-      a.costo.trim()==="" || Number(a.costo)<0 || !Number.isFinite(Number(a.costo)) ||
-      !Number.isSafeInteger(Number(a.existencia)) || Number(a.existencia)<0);
-    if(incorrectos.length){
-      setMensaje("Revisa nombre, categoría, precio, costo y existencia de los "+incorrectos.length+" artículos pendientes.");
+    setMostrarErrores(true);
+    const errores=validarParaPublicar(articulos);
+    if(errores.length) {
+      const afectados=new Set(errores.map(error=>error.id)).size;
+      setMensaje("⚠️ Faltan corregir " + errores.length + " datos en " + afectados +
+        " producto(s). Revisa los avisos junto a cada artículo; ninguno fue publicado.");
+      const primero=errores[0];
+      window.setTimeout(()=>document.getElementById("producto-"+primero.id)?.scrollIntoView({
+        behavior:"smooth",block:"center"
+      }),60);
       return;
     }
     if(!window.confirm("¿Confirmas que deseas publicar "+elegidos.length+" productos en Judi’s Shop?")){
@@ -235,7 +279,12 @@ export default function CargaMasiva() {
         const a=elegidos[i];
         setProgreso("Subiendo imágenes del artículo "+(i+1)+" de "+elegidos.length+"…");
         const principal=await prepararImagenParaPublicar(a.poster ?? a.archivo);
-        const urlPrincipal=await subir(principal);
+        let urlPrincipal: string;
+        try { urlPrincipal=await subir(principal); }
+        catch(error) {
+          throw new Error("No se pudo subir la imagen del producto "+(i+1)+" ("+a.nombre+"): "+
+            (error instanceof Error?error.message:"Error desconocido"));
+        }
         const extras:string[]=[];
         if(a.poster) {
           const original=await convertirJpeg(a.archivo,1600,.82);
@@ -249,8 +298,11 @@ export default function CargaMasiva() {
       setProgreso("Publicando todo el lote…");
       const respuesta=await fetch("/api/productos/lote",{method:"POST",
         headers:{"Content-Type":"application/json"},body:JSON.stringify({productos:registros})});
-      const data=await respuesta.json();
-      if(!respuesta.ok)throw new Error(data.error||"No se pudo publicar el lote.");
+      const data=await respuesta.json().catch(()=>({error:"El servidor no devolvió una respuesta válida."}));
+      if(!respuesta.ok) {
+        if(respuesta.status===401) throw new Error("La sesión de administración terminó. Inicia sesión otra vez; no se publicó el lote.");
+        throw new Error(data.error||"No se pudo publicar el lote (código "+respuesta.status+").");
+      }
       elegidos.forEach(a=>{URL.revokeObjectURL(a.fotoUrl);if(a.posterUrl)URL.revokeObjectURL(a.posterUrl);});
       const ids=new Set(elegidos.map(a=>a.id));
       setArticulos(actual=>actual.filter(a=>!ids.has(a.id)));
@@ -258,10 +310,12 @@ export default function CargaMasiva() {
     }catch(error) {
       setMensaje("❌ "+(error instanceof Error?error.message:"No se pudo publicar.")+
         " Revisa el error antes de volver a intentarlo.");
+      window.scrollTo({top:0,behavior:"smooth"});
     }finally{setOcupado(false);setProgreso("");}
   }
   const elegidos=articulos.filter(a=>a.incluir);
   const postersGenerados=elegidos.filter(a=>!!a.poster).length;
+  const erroresActuales=mostrarErrores?validarParaPublicar(articulos):[];
   return (
     <main className="min-h-screen bg-pink-50 px-3 py-8 text-slate-900 sm:px-6">
       <div className="mx-auto max-w-6xl">
@@ -272,6 +326,10 @@ export default function CargaMasiva() {
           </div>
           <Link href="/admin" className="rounded-xl border border-pink-200 bg-white px-4 py-3 font-bold">← Administración</Link>
         </div>
+        {(mensaje||progreso)&&<p role="alert" aria-live="assertive"
+          className="mt-5 rounded-2xl border border-pink-300 bg-white p-4 text-sm font-semibold text-slate-900">
+          {progreso||mensaje}
+        </p>}
         <section className="mt-6 rounded-3xl bg-white p-5 shadow-sm sm:p-7">
           <h2 className="text-xl font-black">1. Subir fotos o pósteres ya elaborados</h2>
           <p className="mt-2 text-sm text-slate-600">Una imagen por producto, máximo 20. Si ya hiciste tu póster, súbelo directamente: intentaremos leer su nombre del texto impreso. Crear un póster nuevo es opcional. Nada se publica sin tu aprobación.</p>
@@ -287,12 +345,14 @@ export default function CargaMasiva() {
               <p className="text-sm text-slate-500">{elegidos.length} seleccionados · {postersGenerados} pósteres nuevos creados</p></div>
             <div className="flex flex-wrap gap-2">
               <button type="button" disabled={ocupado||!elegidos.length||elegidos.some(a=>a.analizando)} onClick={publicar}
-                className="rounded-xl bg-pink-600 px-4 py-3 font-bold text-white disabled:opacity-50">✅ Publicar {elegidos.length} revisados</button>
+                className="rounded-xl bg-pink-600 px-4 py-3 font-bold text-white disabled:opacity-50">
+                {elegidos.some(a=>a.analizando)?"🔎 Esperando lectura de imágenes…": "✅ Publicar "+elegidos.length+" revisados"}
+              </button>
             </div>
           </section>
           <div className="mt-5 grid gap-5 md:grid-cols-2">
             {articulos.map((a,i)=>(
-              <section key={a.id} className="rounded-3xl border border-pink-100 bg-white p-4 shadow-sm sm:p-5">
+              <section id={"producto-"+a.id} key={a.id} className="min-w-0 overflow-hidden rounded-3xl border border-pink-100 bg-white p-4 shadow-sm sm:p-5">
                 <div className="flex items-center justify-between gap-3">
                   <label className="flex cursor-pointer items-center gap-2 font-bold">
                     <input type="checkbox" checked={a.incluir} disabled={ocupado}
@@ -302,7 +362,15 @@ export default function CargaMasiva() {
                   <button type="button" disabled={ocupado} onClick={()=>quitar(a)}
                     className="text-sm font-bold text-red-600 disabled:opacity-50">Quitar</button>
                 </div>
-                <div className="mt-4 grid grid-cols-2 gap-3">
+                {erroresActuales.some(error=>error.id===a.id)&&<div role="alert"
+                  className="mt-3 rounded-xl border border-red-300 bg-red-50 p-3 text-sm font-semibold text-red-800">
+                  <p>⚠️ Corrige estos datos antes de publicar:</p>
+                  <ul className="mt-1 list-disc pl-5">
+                    {erroresActuales.filter(error=>error.id===a.id).map(error=>
+                      <li key={error.campo}>{error.detalle}</li>)}
+                  </ul>
+                </div>}
+                <div className="mt-4 grid min-w-0 grid-cols-2 gap-3">
                   <div className="flex aspect-[4/5] items-center justify-center overflow-hidden rounded-xl bg-slate-50">
                     {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img src={a.fotoUrl} alt="Imagen subida por ti" className="h-full w-full object-contain"/>
@@ -387,7 +455,7 @@ export default function CargaMasiva() {
             comprueba que coincida con el precio capturado. Los costos no aparecen en la web. Si capturas costo 0, la utilidad del inventario no será exacta hasta que lo actualices.
           </section>
         </>}
-        {(mensaje||progreso)&&<p role="status" className="mt-5 rounded-2xl border border-pink-200 bg-white p-4 text-sm font-semibold text-slate-800">{progreso||mensaje}</p>}
+
       </div>
     </main>
   );
