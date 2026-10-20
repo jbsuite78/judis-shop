@@ -62,7 +62,7 @@ function normalizar(t: string) {
     .replace(/[’‘]/g, "'").replace(/\s+/g, " ").trim().toLowerCase();
 }
 function limpiarLinea(t: string) {
-  return t.replace(/[|~^*_=]+/g, " ").replace(/[^\p{L}\p{N} &'°-]/gu, " ")
+  return t.replace(/[|~^*_=]+/g, " ").replace(/[^A-Za-zÁÉÍÓÚÜÑáéíóúüñ0-9 &'°-]/g, " ")
     .replace(/\s+/g, " ").trim().slice(0, 110);
 }
 const textoNoProducto = [
