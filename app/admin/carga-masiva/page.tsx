@@ -29,6 +29,13 @@ async function convertirJpeg(archivo: File, maximo: number, calidad: number): Pr
     return new File([blob],"fotografia-judis.jpg",{type:"image/jpeg"});
   } finally { URL.revokeObjectURL(url); }
 }
+async function prepararImagenParaPublicar(archivo: File): Promise<File> {
+  // Conserva la resolución y tipografía de pósteres terminados siempre que el servidor los admita.
+  if (["image/jpeg", "image/png", "image/webp"].includes(archivo.type) && archivo.size <= 3_400_000) {
+    return archivo;
+  }
+  return convertirJpeg(archivo,2000,.91);
+}
 async function subir(archivo: File) {
   const formulario=new FormData();formulario.append("archivo",archivo);
   const res=await fetch("/api/upload-producto",{method:"POST",body:formulario});
@@ -172,7 +179,7 @@ export default function CargaMasiva() {
       for(let i=0;i<elegidos.length;i++){
         const a=elegidos[i];
         setProgreso("Subiendo imágenes del artículo "+(i+1)+" de "+elegidos.length+"…");
-        const principal=await convertirJpeg(a.poster ?? a.archivo,1600,.82);
+        const principal=await prepararImagenParaPublicar(a.poster ?? a.archivo);
         const urlPrincipal=await subir(principal);
         const extras:string[]=[];
         if(a.poster) {
