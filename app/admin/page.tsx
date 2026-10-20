@@ -17,6 +17,11 @@ export default function AdminPage() {
     },
     
     {
+      titulo: "📸 Carga masiva y pósteres",
+      descripcion: "Subir varias fotos, generar pósteres y publicar artículos revisados por categoría",
+      href: "/admin/carga-masiva",
+    },
+    {
       titulo: "🧾 Corte de caja",
       descripcion: "Revisar totales, ingresos y movimientos",
       href: "/admin/corte",
