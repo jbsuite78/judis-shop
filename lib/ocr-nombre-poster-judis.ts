@@ -126,8 +126,8 @@ function titular(texto: string) {
 }
 
 export function nombreEnTextoOCR(datos: SalidaOCR["data"], altoImagen: number): string {
-  const lineas = (datos.lines?.length ? datos.lines : datos.text.split("\n").map(text => ({ text })))
-    .map(linea => ({ ...linea, text: limpiarLinea(linea.text) }))
+  const fuentes: Linea[] = datos.lines?.length ? datos.lines : datos.text.split("\n").map(text => ({ text }));
+  const lineas: Linea[] = fuentes.map(linea => ({ ...linea, text: limpiarLinea(linea.text) }))
     .filter(linea => linea.text);
   const candidatos = lineas.map((linea, idx) => ({ texto: linea.text, puntos: puntuar(linea, altoImagen), idx }));
   // Reconoce nombres grandes divididos en dos renglones: «Japanese / Cherry Blossom».
