@@ -52,7 +52,10 @@ export default function CargaMasiva() {
   function cambiar(id:string, cambios:Partial<Articulo>, invalidar=true) {
     setArticulos(actual=>actual.map(a=>{
       if(a.id!==id)return a;
-      if(!invalidar)return {...a,...cambios};
+      if(!invalidar){
+        if(a.posterUrl && Object.prototype.hasOwnProperty.call(cambios,"posterUrl") && a.posterUrl !== cambios.posterUrl){ URL.revokeObjectURL(a.posterUrl); }
+        return {...a,...cambios};
+      }
       if(a.posterUrl)URL.revokeObjectURL(a.posterUrl);
       return {...a,...cambios,poster:undefined,posterUrl:undefined};
     }));
@@ -107,35 +110,57 @@ export default function CargaMasiva() {
     URL.revokeObjectURL(a.fotoUrl);if(a.posterUrl)URL.revokeObjectURL(a.posterUrl);
     setArticulos(actual=>actual.filter(x=>x.id!==a.id));
   }
-  async function generar() {
-    const elegidos=articulos.filter(a=>a.incluir);
-    if(!elegidos.length){setMensaje("Selecciona al menos un artículo.");return;}
-    if(elegidos.some(a=>a.analizando)){setMensaje("Espera a que termine la identificación de las fotos.");return;}
-    if(elegidos.some(a=>!a.nombre.trim() || !a.categoria || !a.precio.trim() ||
-      !Number.isFinite(Number(a.precio)) || Number(a.precio)<0)) {
-      setMensaje("Completa nombre, categoría y precio de todos los artículos seleccionados.");
+  async function crearPosterUno(a:Articulo) {
+    if(!a.nombre.trim() || !a.categoria || a.precio.trim()==="" ||
+       !Number.isFinite(Number(a.precio)) || Number(a.precio)<0) {
+      setMensaje("Completa nombre, categoría y precio antes de crear el póster.");
       return;
     }
-    setOcupado(true);setMensaje("");
+    setOcupado(true);setMensaje("");setProgreso("Creando póster de "+a.nombre+"…");
     try {
-      for(let i=0;i<elegidos.length;i++){
-        const a=elegidos[i];setProgreso("Creando póster "+(i+1)+" de "+elegidos.length+"…");
-        const archivo=await crearPosterJudi(a.archivo,a.nombre,a.categoria,Number(a.precio));
-        cambiar(a.id,{poster:archivo,posterUrl:URL.createObjectURL(archivo)},false);
+      const poster=await crearPosterJudi(a.archivo,a.nombre,a.categoria,Number(a.precio));
+      cambiar(a.id,{poster,posterUrl:URL.createObjectURL(poster)},false);
+      setMensaje("✅ Póster creado. Revisa la vista previa. Puedes volver a usar la imagen que subiste.");
+    }catch(error) {
+      setMensaje(error instanceof Error?error.message:"No se pudo crear el póster.");
+    }finally {setOcupado(false);setProgreso("");}
+  }
+  async function crearDescripcionUno(a:Articulo) {
+    if(!a.nombre.trim() || !a.categoria) {
+      setMensaje("Completa el nombre y la categoría antes de crear la descripción.");
+      return;
+    }
+    if(a.descripcion.trim() &&
+        !window.confirm("¿Quieres reemplazar la descripción actual de este producto?")) return;
+    setOcupado(true);setMensaje("");setProgreso("Creando descripción de "+a.nombre+"…");
+    try {
+      const res=await fetch("/api/carga-masiva/descripcion",{
+        method:"POST",headers:{"Content-Type":"application/json"},
+        body:JSON.stringify({nombre:a.nombre,marca:a.marca,categoria:a.categoria})
+      });
+      const data=await res.json();
+      if(!res.ok || typeof data.descripcion!=="string" || !data.descripcion.trim()) {
+        throw new Error(data.error || "No se pudo crear la descripción.");
       }
-      setMensaje("✅ Pósteres listos. Revisa las vistas previas, los datos y las categorías antes de publicar.");
-    }catch(error){setMensaje(error instanceof Error?error.message:"No se pudieron crear los pósteres.");}
-    finally{setOcupado(false);setProgreso("");}
+      cambiar(a.id,{descripcion:data.descripcion},false);
+      setMensaje("✅ Descripción creada. Revísala y edítala si es necesario antes de publicar.");
+    }catch(error) {
+      setMensaje(error instanceof Error?error.message:"No se pudo crear la descripción.");
+    }finally {setOcupado(false);setProgreso("");}
+  }
+  function usarImagenSubida(a:Articulo) {
+    cambiar(a.id,{poster:undefined,posterUrl:undefined},false);
+    setMensaje("✅ Se utilizará la imagen que subiste, sin crear otro póster.");
   }
   async function publicar() {
     const elegidos=articulos.filter(a=>a.incluir);
     if(!elegidos.length){setMensaje("Selecciona los productos que vas a publicar.");return;}
-    const incorrectos=elegidos.filter(a=>!a.poster || !a.nombre.trim() || !a.categoria ||
+    const incorrectos=elegidos.filter(a=>!a.nombre.trim() || !a.categoria ||
       a.precio.trim()==="" || Number(a.precio)<0 || !Number.isFinite(Number(a.precio)) ||
       a.costo.trim()==="" || Number(a.costo)<0 || !Number.isFinite(Number(a.costo)) ||
       !Number.isSafeInteger(Number(a.existencia)) || Number(a.existencia)<0);
     if(incorrectos.length){
-      setMensaje("Revisa los datos y genera de nuevo los pósteres de los "+incorrectos.length+" artículos pendientes.");
+      setMensaje("Revisa nombre, categoría, precio, costo y existencia de los "+incorrectos.length+" artículos pendientes.");
       return;
     }
     if(!window.confirm("¿Confirmas que deseas publicar "+elegidos.length+" productos en Judi’s Shop?")){
@@ -147,13 +172,17 @@ export default function CargaMasiva() {
       for(let i=0;i<elegidos.length;i++){
         const a=elegidos[i];
         setProgreso("Subiendo imágenes del artículo "+(i+1)+" de "+elegidos.length+"…");
-        const original=await convertirJpeg(a.archivo,1600,.82);
-        const urlOriginal=await subir(original);
-        const urlPoster=await subir(a.poster!);
+        const principal=await convertirJpeg(a.poster ?? a.archivo,1600,.82);
+        const urlPrincipal=await subir(principal);
+        const extras:string[]=[];
+        if(a.poster) {
+          const original=await convertirJpeg(a.archivo,1600,.82);
+          extras.push(await subir(original));
+        }
         registros.push({nombre:a.nombre.trim(),descripcion:a.descripcion.trim() ||
           a.nombre.trim()+". Disponible en Judi’s Shop.",marca:a.marca.trim()||"Sin marca",
           categoria:a.categoria,precio:Number(a.precio),costo:Number(a.costo),
-          existencia:Number(a.existencia),imagen:urlPoster,imagenes:[urlOriginal]});
+          existencia:Number(a.existencia),imagen:urlPrincipal,imagenes:extras});
       }
       setProgreso("Publicando todo el lote…");
       const respuesta=await fetch("/api/productos/lote",{method:"POST",
@@ -170,20 +199,20 @@ export default function CargaMasiva() {
     }finally{setOcupado(false);setProgreso("");}
   }
   const elegidos=articulos.filter(a=>a.incluir);
-  const listos=elegidos.filter(a=>!!a.poster).length;
+  const postersGenerados=elegidos.filter(a=>!!a.poster).length;
   return (
     <main className="min-h-screen bg-pink-50 px-3 py-8 text-slate-900 sm:px-6">
       <div className="mx-auto max-w-6xl">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div><p className="text-sm font-bold uppercase tracking-widest text-pink-600">Judi’s Shop / Administración</p>
             <h1 className="mt-2 text-3xl font-black sm:text-4xl">Carga masiva y pósteres</h1>
-            <p className="mt-2 text-sm text-slate-600">Carga fotos, revisa los datos y publica todos los aprobados en un solo botón.</p>
+            <p className="mt-2 text-sm text-slate-600">Carga tus pósteres ya terminados o crea uno nuevo si lo necesitas. Revisa todo antes de publicar.</p>
           </div>
           <Link href="/admin" className="rounded-xl border border-pink-200 bg-white px-4 py-3 font-bold">← Administración</Link>
         </div>
         <section className="mt-6 rounded-3xl bg-white p-5 shadow-sm sm:p-7">
-          <h2 className="text-xl font-black">1. Seleccionar fotografías</h2>
-          <p className="mt-2 text-sm text-slate-600">Una foto por producto, máximo 20. Se guardará también la foto original. Las fotos no se publican hasta tu aprobación.</p>
+          <h2 className="text-xl font-black">1. Subir fotos o pósteres ya elaborados</h2>
+          <p className="mt-2 text-sm text-slate-600">Una imagen por producto, máximo 20. Si ya hiciste tu póster, súbelo directamente: se utilizará tal cual. Crear un póster nuevo es opcional. Nada se publica sin tu aprobación.</p>
           <input type="file" accept="image/*" multiple disabled={ocupado}
             onChange={seleccionar} className="mt-4 block w-full rounded-xl border-2 border-dashed border-pink-300 bg-pink-50 p-5 text-sm"/>
           <p className="mt-3 text-xs text-slate-500">{ia?
@@ -193,11 +222,9 @@ export default function CargaMasiva() {
         {articulos.length>0 && <>
           <section className="mt-6 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-pink-200 bg-white p-4">
             <div><strong>{articulos.length} artículos cargados</strong>
-              <p className="text-sm text-slate-500">{elegidos.length} seleccionados · {listos} pósteres listos</p></div>
+              <p className="text-sm text-slate-500">{elegidos.length} seleccionados · {postersGenerados} pósteres nuevos creados</p></div>
             <div className="flex flex-wrap gap-2">
-              <button type="button" disabled={ocupado} onClick={generar}
-                className="rounded-xl bg-purple-700 px-4 py-3 font-bold text-white disabled:opacity-50">✨ Crear pósteres</button>
-              <button type="button" disabled={ocupado||!elegidos.length||listos!==elegidos.length} onClick={publicar}
+              <button type="button" disabled={ocupado||!elegidos.length||elegidos.some(a=>a.analizando)} onClick={publicar}
                 className="rounded-xl bg-pink-600 px-4 py-3 font-bold text-white disabled:opacity-50">✅ Publicar {elegidos.length} revisados</button>
             </div>
           </section>
@@ -216,14 +243,19 @@ export default function CargaMasiva() {
                 <div className="mt-4 grid grid-cols-2 gap-3">
                   <div className="flex aspect-[4/5] items-center justify-center overflow-hidden rounded-xl bg-slate-50">
                     {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img src={a.fotoUrl} alt="Fotografía original" className="h-full w-full object-contain"/>
+                    <img src={a.fotoUrl} alt="Imagen subida por ti" className="h-full w-full object-contain"/>
                   </div>
                   <div className="flex aspect-[4/5] items-center justify-center overflow-hidden rounded-xl bg-pink-50">
-                    {a.posterUrl?
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img src={a.posterUrl} alt={"Póster de "+a.nombre} className="h-full w-full object-contain"/>:
-                      <p className="p-3 text-center text-sm font-medium text-pink-700">Póster pendiente</p>}
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src={a.posterUrl ?? a.fotoUrl} alt={"Imagen que se publicará: "+a.nombre} className="h-full w-full object-contain"/>
                   </div>
+                </div>
+                <p className="mt-2 text-xs text-slate-500">Izquierda: imagen subida · Derecha: imagen final para la web.</p>
+                <div className="mt-3 flex flex-wrap gap-2">
+                  <button type="button" disabled={ocupado||a.analizando} onClick={()=>crearPosterUno(a)}
+                    className="rounded-xl bg-purple-700 px-3 py-2 font-bold text-white disabled:opacity-50">✨ Crear póster</button>
+                  {a.poster&&<button type="button" disabled={ocupado} onClick={()=>usarImagenSubida(a)}
+                    className="rounded-xl border border-purple-300 bg-white px-3 py-2 font-bold text-purple-800 disabled:opacity-50">↩ Usar imagen que subí</button>}
                 </div>
                 {a.analizando&&<p className="mt-3 text-sm text-purple-700">🔎 Identificando producto…</p>}
                 {a.aviso&&<p className="mt-3 text-xs text-slate-500">{a.aviso}</p>}
@@ -261,20 +293,27 @@ export default function CargaMasiva() {
                       value={a.existencia} className={borde}
                       onChange={e=>cambiar(a.id,{existencia:e.target.value})}/>
                   </label>
-                  <label className="text-sm font-semibold sm:col-span-2">Descripción para la web
-                    <textarea rows={2} value={a.descripcion} disabled={ocupado} maxLength={2500}
-                      placeholder="Descripción breve, opcional" className={borde}
+                  <div className="text-sm font-semibold sm:col-span-2">
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <label htmlFor={"desc-"+a.id}>Descripción para la web</label>
+                      <button type="button" disabled={ocupado||a.analizando} onClick={()=>crearDescripcionUno(a)}
+                        className="rounded-xl bg-pink-100 px-3 py-2 font-bold text-pink-800 disabled:opacity-50">📝 Crear descripción</button>
+                    </div>
+                    <textarea id={"desc-"+a.id} rows={3} value={a.descripcion} disabled={ocupado} maxLength={2500}
+                      placeholder="Escribe una descripción o pulsa Crear descripción" className={borde}
                       onChange={e=>cambiar(a.id,{descripcion:e.target.value},false)}/>
-                  </label>
+                  </div>
                 </div>
-                {a.poster&&<p className="mt-3 text-xs font-bold text-green-700">✓ Póster generado. Si cambias nombre, categoría o precio deberás regenerarlo.</p>}
+                {a.poster&&<p className="mt-3 text-xs font-bold text-green-700">✓ Póster nuevo generado. Si cambias nombre, categoría o precio deberás regenerarlo.</p>}
               </section>
             ))}
           </div>
           <section className="mt-5 rounded-2xl bg-white p-5 text-sm text-slate-600">
             <strong className="text-slate-900">2. Revisión y publicación.</strong> Comprueba que la foto, presentación,
-            categoría y precio correspondan a cada artículo. Pulsa «Crear pósteres» después de completar los datos;
-            después «Publicar revisados» para agregar el lote al catálogo. Los costos no aparecen en la web. Si capturas costo 0, la utilidad del inventario no será exacta hasta que lo actualices.
+            categoría y precio correspondan a cada artículo. Si ya subiste un póster terminado,
+            no es necesario pulsar «Crear póster»; la foto subida se publicará directamente. «Crear descripción» es opcional.
+            Pulsa «Publicar revisados» cuando termines. Si tus pósteres incluyen precio,
+            comprueba que coincida con el precio capturado. Los costos no aparecen en la web. Si capturas costo 0, la utilidad del inventario no será exacta hasta que lo actualices.
           </section>
         </>}
         {(mensaje||progreso)&&<p role="status" className="mt-5 rounded-2xl border border-pink-200 bg-white p-4 text-sm font-semibold text-slate-800">{progreso||mensaje}</p>}
