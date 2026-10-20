@@ -27,9 +27,9 @@ export async function POST(request: Request) {
           response_format:{type:"json_object"},
           messages:[
             {role:"system",content:
-              "Analiza la fotografía de un producto para una tienda mexicana. Regresa solo JSON con nombre, marca, categoria, descripcion, seguro. Usa únicamente detalles claramente visibles. Nunca inventes marca, variantes ni certificaciones. Categoría debe ser una de: "+
+              "Analiza el póster o fotografía comercial del producto para una tienda mexicana. Regresa solo JSON con nombre, marca, categoria, descripcion, seguro. Prioriza leer el NOMBRE REAL del producto o su variante impresa en letras grandes (por ejemplo Japanese Cherry Blossom o Baya Clog K) y combina con su marca solo cuando sea visible. Ignora slogans, Pídelo por mensaje, Disponible, precios y Judi’s Shop (esa es la tienda, NO la marca del producto). No confundas categoría genérica con el nombre exacto. Usa únicamente detalles claramente visibles; si el nombre no está claro devuelve nombre vacío y seguro false. Nunca inventes marca, variantes ni certificaciones. Categoría debe ser una de: "+
               CATEGORIAS_JUDIS.join(", ")+". Si no puedes identificar el tipo de producto, categoría vacía y seguro false. Si no se ve marca devuelve Sin marca. Nombre específico cuando sea legible. Descripción breve factual sin afirmaciones clínicas ni autenticidad. seguro booleano indica si los datos son confiables."},
-            {role:"user",content:[{type:"text",text:"Identifica producto, marca, categoría y descripción. Sin precio ni cantidades."},
+            {role:"user",content:[{type:"text",text:"Lee el título del producto que aparece en este póster y su marca. Devuelve el nombre específico, no el nombre de la tienda ni un slogan. Sin precio ni cantidades."},
               {type:"image_url",image_url:{url:foto,detail:"low"}}]},
           ],
         })
