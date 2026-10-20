@@ -88,9 +88,9 @@ const frasesExcluidas = [
 ];
 function valido(raw:string):boolean {
   const s=limpia(raw), n=normal(s);
-  if(n.length<7 || n.length>65 || /^\d/.test(n)&&!/^360\s/.test(n))return false;
+  if((n.length<7 && n!=="yara") || n.length>65 || (/^\d/.test(n)&&!/^360\s/.test(n)))return false;
   const palabras=n.split(/\s+/);
-  if(palabras.length>7 || !palabras.some(w=>w.replace(/[^a-z]/g,"").length>=5))return false;
+  if(palabras.length>7 || (!palabras.some(w=>w.replace(/[^a-z]/g,"").length>=5) && n!=="yara"))return false;
   if(frasesExcluidas.some(rx=>rx.test(n)))return false;
   if(/[<>$@#]/.test(raw))return false;
   return true;
@@ -107,6 +107,7 @@ function titulo(texto:string):string {
     return p?p[0].toLocaleUpperCase("es")+p.slice(1):"";
   }).join(" ").trim();
 }
+export function nombrePareceValido(t:string):boolean {return valido(t);}
 function puntuar(l:Linea, alto:number):number {
   if(!valido(l.text))return -1e3;
   const n=normal(l.text),words=n.split(" ").length;
