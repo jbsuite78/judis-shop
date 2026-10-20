@@ -67,7 +67,8 @@ function limpiarLinea(t: string) {
 }
 const textoNoProducto = [
   /^judi'?s?\s*shop/, /bath\s*(?:&|and|y)\s*body\s*works/,
-  /victoria'?s?\s*secret/, /^by\s+bath/, /p[ií]delo\s+por\s+mensaje/,
+  /victoria'?s?\s*secret/, /^(?:crocs|dermasil|lattafa|perry ellis|guess|coach)$/,
+  /^(?:everyday|luxuries|fruit|fusion)$/, /^by\s+bath/, /p[ií]delo\s+por\s+mensaje/,
   /original(?:es)?$/, /^disponible$/, /disponible\s+en/,
   /www\.|\.com\b/, /c[oó]digo|promoci[oó]n/,
   /set ideal para/, /un aroma que/, /tu aroma favorito/,
@@ -92,7 +93,7 @@ const marcas = [
 function rechazar(t: string) {
   const limpio = limpiarLinea(t);
   const norm = normalizar(limpio);
-  if (!limpio || norm.length < 4 || norm.length > 74 || /^\d/.test(norm)) return true;
+  if (!limpio || norm.length < 4 || norm.length > 74 || (/^\d/.test(norm) && !/^360\s/.test(norm))) return true;
   if (/^(?:\d+|[a-z])$/.test(norm) || /(?:\$|#|@|https?:\/\/)/.test(t)) return true;
   if (textoNoProducto.some(r => r.test(norm))) return true;
   if (norm.split(" ").length > 9) return true;
