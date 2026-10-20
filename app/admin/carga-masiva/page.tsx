@@ -4,7 +4,7 @@ import { ChangeEvent, useEffect, useState } from "react";
 import Link from "next/link";
 import { CATEGORIAS_JUDIS, nombreDesdeArchivo, sugerirCategoria } from "@/lib/carga-masiva-judis";
 import { crearPosterJudi } from "@/lib/crear-poster-judis";
-import { leerNombreDePoster } from "@/lib/ocr-nombre-poster-judis";
+import { leerDatosDePoster, nombrePareceValido } from "@/lib/ocr-nombre-poster-judis";
 
 type Articulo = {
   id: string; archivo: File; fotoUrl: string; nombre: string; marca: string;
@@ -88,7 +88,7 @@ export default function CargaMasiva() {
           });
           if(res.ok) {
             const d=await res.json();
-            if(typeof d.nombre==="string"&&d.nombre.trim()){
+            if(typeof d.nombre==="string" && nombrePareceValido(d.nombre) && d.seguro===true) {
               resultado=d;modo="ia";
             }
           }
@@ -98,8 +98,15 @@ export default function CargaMasiva() {
       if(!resultado) {
         try {
           const jpeg=await convertirJpeg(a.archivo,1600,.92);
-          const nombre=await leerNombreDePoster(jpeg);
-          if(nombre){resultado={nombre};modo="ocr";}
+          const datos=await leerDatosDePoster(jpeg);
+          if(datos.nombre && nombrePareceValido(datos.nombre)) {
+            resultado={nombre:datos.nombre,marca:datos.marca,categoria:datos.categoria};
+            modo="ocr";
+          } else if(datos.marca || datos.categoria) {
+            // La marca y categoría también son útiles aunque el nombre no sea legible.
+            resultado={marca:datos.marca,categoria:datos.categoria};
+            modo="ocr";
+          }
         }catch {errorOCR=true;}
       }
       setArticulos(actual=>actual.map(item=>{
@@ -112,12 +119,12 @@ export default function CargaMasiva() {
           ...item,nombre,categoria,marca,analizando:false,
           // No reemplazar descripciones escritas por el dueño sin su permiso.
           aviso:propuesto
-            ? "✅ Nombre detectado del póster. Confírmalo antes de publicar."+(modo==="ocr"?" (Lectura automática del texto).":"")
+            ? "✅ Nombre propuesto del póster. Verifica que coincida con el título antes de publicar."+(modo==="ocr"?" (Lectura del texto).":"")
             : item.nombre
               ? "⚠️ Se utilizó el nombre del archivo. Confirma que sea correcto."
               : errorOCR
                 ? "⚠️ No se pudo leer el texto del póster. Escribe el nombre o toca «Volver a leer»."
-                : "⚠️ No se identificó un nombre confiable. Puedes escribirlo o volver a leer.",
+                : "⚠️ No se identificó un nombre confiable; no se llenará con letras sueltas. Puedes escribirlo o volver a leer.",
         };
       }));
     }catch {
