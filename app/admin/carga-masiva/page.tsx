@@ -125,7 +125,7 @@ export default function CargaMasiva() {
     }
   }
   async function reintentarNombre(a:Articulo) {
-    cambiar(a.id,{analizando:true,aviso:"🔎 Volviendo a leer el nombre del póster…"},false);
+    cambiar(a.id,{analizando:true,nombreEditado:false,aviso:"🔎 Volviendo a leer el nombre del póster…"},false);
     await identificar({...a,nombreEditado:false});
   }
   function seleccionar(evento:ChangeEvent<HTMLInputElement>) {
