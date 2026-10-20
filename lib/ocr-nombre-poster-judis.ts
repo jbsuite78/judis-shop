@@ -69,6 +69,7 @@ const marcas = [
   { rx:/\bcrocs\b/i, nombre:"Crocs", categoria:"Calzado" },
   { rx:/\blattafa\b/i, nombre:"Lattafa", categoria:"Perfumes" },
   { rx:/\bperry\s+ellis\b/i, nombre:"Perry Ellis", categoria:"Perfumes" },
+  { rx:/\bguess\b/i, nombre:"GUESS", categoria:"" },
   { rx:/\bdermasil\b/i, nombre:"Dermasil", categoria:"Belleza" },
 ];
 const frasesExcluidas = [
@@ -183,6 +184,12 @@ export async function leerDatosDePoster(archivo:File):Promise<ProductoLeido> {
     nombre=nombreEnTextoOCR(segundo.data,Math.max(1,...lineaOCR(segundo.data).map(l=>l.bbox?.y1??0)));
   }
   const marca=marcas.find(m=>m.rx.test(texto));
+  // Este título del póster indica una cartera para caballero GUESS:
+  // usar únicamente palabras visibles y no dejar un nombre genérico repetido.
+  if (marca?.nombre === "GUESS" && /cartera/i.test(texto) &&
+      /caballero/i.test(texto) && /^(?:cartera|cartera para caballero)$/i.test(nombre)) {
+    nombre = "Cartera GUESS para caballero";
+  }
   let categoria=marca?.categoria??"";
   if(!categoria && /\b(?:crema|locion|lotion|mist|body wash|body cream|jab[oó]n|soap|skincare|bruma)\b/i.test(texto))categoria="Belleza";
   if(!categoria && /\b(?:clog|tenis|sandalias|zapato|crocs)\b/i.test(texto))categoria="Calzado";
