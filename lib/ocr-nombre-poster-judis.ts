@@ -62,16 +62,17 @@ function normalizar(t: string) {
     .replace(/[’‘]/g, "'").replace(/\s+/g, " ").trim().toLowerCase();
 }
 function limpiarLinea(t: string) {
-  return t.replace(/[|~^*_=]+/g, " ").replace(/[^A-Za-zÁÉÍÓÚÜÑáéíóúüñ0-9 &'°-]/g, " ")
+  return t.replace(/[’‘]/g, "'").replace(/[|~^*_=]+/g, " ").replace(/[^A-Za-zÁÉÍÓÚÜÑáéíóúüñ0-9 &'°-]/g, " ")
     .replace(/\s+/g, " ").trim().slice(0, 110);
 }
 const textoNoProducto = [
-  /^judi'?s?\s*shop/, /bath\s*(?:&|and|y)\s*body\s*works/,
+  /^judi\s*'?s?\s*shop/, /bath\s*(?:&|and|y)\s*body\s*works/,
   /victoria'?s?\s*secret/, /^(?:crocs|dermasil|lattafa|perry ellis|guess|coach)$/,
   /^(?:everyday|luxuries|fruit|fusion)$/, /^by\s+bath/, /p[ií]delo\s+por\s+mensaje/,
   /original(?:es)?$/, /^disponible$/, /disponible\s+en/,
   /www\.|\.com\b/, /c[oó]digo|promoci[oó]n/,
   /set ideal para/, /un aroma que/, /tu aroma favorito/,
+  /elegancia que enamora|c[oó]modos y ligeros|^con estilo$|^ligeros$/,
   /hidrataci[oó]n|humectaci[oó]n|p[ií]el\s+suave/,
   /suavidad y|frescura y|brillo y aroma/,
   /fragrance mist for|body lotion$|crema corporal hidratante/,
