@@ -2,7 +2,6 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import MobileNav from "./MobileNav";
-import HalloweenHero from "./HalloweenHero";
 
 type Producto = {
   id?: number;
@@ -90,11 +89,11 @@ export default function MobileStorefront() {
   }
 
   return (
-    <div className="halloween-store min-h-screen pb-28 text-slate-900">
-      <header className="halloween-header sticky top-0 z-40 border-b border-pink-100 bg-white/95 px-4 py-3 backdrop-blur-xl">
+    <div className="min-h-screen bg-[#fff9fc] pb-28 text-slate-900">
+      <header className="sticky top-0 z-40 border-b border-pink-100 bg-white/95 px-4 py-3 backdrop-blur-xl">
         <div className="mx-auto flex max-w-lg items-center justify-between gap-3">
           <Link href="/" className="flex min-w-0 items-center gap-2.5">
-            <img src="/judis-logo-halloween.webp" alt="Logotipo Judi's Shop" className="h-12 w-12 shrink-0 rounded-full border-2 border-pink-200 object-cover" />
+            <img src="/judis-logo.jpeg" alt="Logotipo Judi's Shop" className="h-12 w-12 shrink-0 rounded-full border-2 border-pink-200 object-cover" />
             <div className="min-w-0">
               <p className="truncate text-xl font-black tracking-tight text-[#c21871]">Judi&apos;s Shop</p>
               <p className="truncate text-[11px] font-medium text-slate-500">Tus marcas favoritas de USA 🇺🇸</p>
@@ -118,14 +117,22 @@ export default function MobileStorefront() {
       </header>
 
       <main className="mx-auto max-w-lg px-4">
-        <HalloweenHero />
+        <section aria-label="Bienvenida a Judi's Shop" className="relative mt-4 overflow-hidden rounded-[28px] bg-gradient-to-br from-[#e42e91] via-[#b425b3] to-[#5034ad] px-5 py-6 text-white shadow-[0_12px_26px_rgba(181,37,147,0.2)]">
+          <div className="pointer-events-none absolute -right-8 -top-12 h-40 w-40 rounded-full bg-white/10" />
+          <div className="pointer-events-none absolute -bottom-12 right-12 h-28 w-28 rounded-full bg-white/10" />
+          <span className="relative inline-flex rounded-full border border-white/30 bg-white/15 px-3 py-1 text-[10px] font-extrabold uppercase tracking-wide">Shopping en Estados Unidos 🇺🇸</span>
+          <h1 className="relative mt-3 max-w-[250px] text-[29px] font-black leading-[1.1]">Lo que te encanta, más cerca de ti 💖</h1>
+          <p className="relative mt-2 max-w-[245px] text-[13px] leading-5 text-pink-50">Productos originales, novedades y entrega en Monterrey.</p>
+          <Link href="/catalogo" className="relative mt-4 inline-flex items-center gap-2 rounded-xl bg-white px-4 py-3 text-xs font-black text-pink-700 shadow-md">Comprar ahora →</Link>
+          <div aria-hidden="true" className="pointer-events-none absolute bottom-5 right-4 rotate-12 text-[70px] drop-shadow-md">🛍️</div>
+        </section>
 
         <div className="mt-3 grid grid-cols-2 gap-2">
           <div className="rounded-2xl border border-pink-100 bg-white px-2 py-3 text-center text-[11px] font-extrabold text-pink-800 shadow-sm">✨ 100% originales</div>
           <div className="rounded-2xl border border-pink-100 bg-white px-2 py-3 text-center text-[11px] font-extrabold text-pink-800 shadow-sm">🚚 Entrega a domicilio</div>
         </div>
 
-        <section id="categorias-movil" className="halloween-category-panel scroll-mt-36">
+        <section id="categorias-movil" className="scroll-mt-36 pt-6">
           <div className="mb-4 flex items-end justify-between">
             <div><p className="text-[10px] font-black uppercase tracking-[0.2em] text-pink-600">Explora Judi&apos;s</p><h2 className="mt-1 text-xl font-black">Categorías</h2></div>
             <Link href="/catalogo" className="text-xs font-extrabold text-pink-600">Ver todas →</Link>
@@ -141,9 +148,9 @@ export default function MobileStorefront() {
         </section>
 
         <section className="pt-5">
-          <div className="halloween-section-title mb-4 flex items-end justify-between gap-3">
+          <div className="mb-4 flex items-end justify-between">
             <div><p className="text-[10px] font-black uppercase tracking-[0.2em] text-pink-600">Descubre tu favorito</p><h2 className="mt-1 text-xl font-black">Recién llegados</h2></div>
-            <Link href="/catalogo" className="halloween-title-link text-xs font-extrabold">Ver catálogo →</Link>
+            <Link href="/catalogo" className="text-xs font-extrabold text-pink-600">Ver catálogo →</Link>
           </div>
           {cargando && <p role="status" className="rounded-2xl bg-white p-8 text-center text-sm text-slate-500">Cargando novedades...</p>}
           {errorCarga && <div className="rounded-2xl bg-white p-6 text-center text-sm text-slate-600">No pudimos cargar las novedades ahora. <Link href="/catalogo" className="font-bold text-pink-600 underline">Abrir catálogo</Link></div>}
