@@ -48,6 +48,7 @@ export default function CargaMasiva() {
   const [articulos,setArticulos]=useState<Articulo[]>([]);
   const [ia,setIa]=useState(false);
   const [ocupado,setOcupado]=useState(false);
+  const [generandoDescripcionId,setGenerandoDescripcionId]=useState<string|null>(null);
   const [mensaje,setMensaje]=useState("");
   const [progreso,setProgreso]=useState("");
   useEffect(()=>{
@@ -133,27 +134,40 @@ export default function CargaMasiva() {
     }finally {setOcupado(false);setProgreso("");}
   }
   async function crearDescripcionUno(a:Articulo) {
-    if(!a.nombre.trim() || !a.categoria) {
-      setMensaje("Completa el nombre y la categoría antes de crear la descripción.");
+    // Una categoría ayuda a personalizar el texto, pero no es requisito para escribirlo.
+    if(!a.nombre.trim()) {
+      cambiar(a.id,{aviso:"⚠️ Escribe primero el nombre del producto. Después pulsa Crear descripción."},false);
+      document.getElementById("nombre-"+a.id)?.focus();
       return;
     }
     if(a.descripcion.trim() &&
         !window.confirm("¿Quieres reemplazar la descripción actual de este producto?")) return;
-    setOcupado(true);setMensaje("");setProgreso("Creando descripción de "+a.nombre+"…");
+    setOcupado(true);
+    setGenerandoDescripcionId(a.id);
+    cambiar(a.id,{aviso:"📝 Generando descripción…"},false);
+    setMensaje("");
     try {
       const res=await fetch("/api/carga-masiva/descripcion",{
         method:"POST",headers:{"Content-Type":"application/json"},
         body:JSON.stringify({nombre:a.nombre,marca:a.marca,categoria:a.categoria})
       });
-      const data=await res.json();
+      const data=await res.json().catch(()=>({}));
       if(!res.ok || typeof data.descripcion!=="string" || !data.descripcion.trim()) {
-        throw new Error(data.error || "No se pudo crear la descripción.");
+        if(res.status===401) throw new Error("Tu sesión terminó. Vuelve a iniciar sesión y prueba de nuevo.");
+        throw new Error(data.error || "No se pudo generar la descripción. Intenta nuevamente.");
       }
-      cambiar(a.id,{descripcion:data.descripcion},false);
-      setMensaje("✅ Descripción creada. Revísala y edítala si es necesario antes de publicar.");
+      cambiar(a.id,{
+        descripcion:data.descripcion,
+        aviso:data.origen==="plantilla"
+          ? "✅ Descripción creada con texto base editable. Revísala antes de publicar."
+          : "✅ Descripción creada. Puedes corregirla antes de publicar."
+      },false);
     }catch(error) {
-      setMensaje(error instanceof Error?error.message:"No se pudo crear la descripción.");
-    }finally {setOcupado(false);setProgreso("");}
+      cambiar(a.id,{aviso:"❌ "+(error instanceof Error?error.message:"No se pudo crear la descripción.")},false);
+    }finally {
+      setGenerandoDescripcionId(null);
+      setOcupado(false);
+    }
   }
   function usarImagenSubida(a:Articulo) {
     cambiar(a.id,{poster:undefined,posterUrl:undefined},false);
@@ -265,10 +279,11 @@ export default function CargaMasiva() {
                     className="rounded-xl border border-purple-300 bg-white px-3 py-2 font-bold text-purple-800 disabled:opacity-50">↩ Usar imagen que subí</button>}
                 </div>
                 {a.analizando&&<p className="mt-3 text-sm text-purple-700">🔎 Identificando producto…</p>}
-                {a.aviso&&<p className="mt-3 text-xs text-slate-500">{a.aviso}</p>}
+                <p className="mt-2 text-xs text-slate-500">Para crear la descripción basta con el nombre; puedes completar la categoría después.</p>
+                
                 <div className="mt-4 grid gap-3 sm:grid-cols-2">
                   <label className="sm:col-span-2 text-sm font-semibold">Nombre del producto
-                    <input value={a.nombre} disabled={ocupado} maxLength={180} className={borde} placeholder="Nombre y variante exactos"
+                    <input id={"nombre-"+a.id} value={a.nombre} disabled={ocupado} maxLength={180} className={borde} placeholder="Nombre y variante del producto (del póster)"
                       onChange={e=>{
                         const nombre=e.target.value;
                         cambiar(a.id,{nombre,categoria:a.categoria||sugerirCategoria(nombre)});
@@ -304,11 +319,12 @@ export default function CargaMasiva() {
                     <div className="flex flex-wrap items-center justify-between gap-2">
                       <label htmlFor={"desc-"+a.id}>Descripción para la web</label>
                       <button type="button" disabled={ocupado||a.analizando} onClick={()=>crearDescripcionUno(a)}
-                        className="rounded-xl bg-pink-100 px-3 py-2 font-bold text-pink-800 disabled:opacity-50">📝 Crear descripción</button>
+                        className="rounded-xl bg-pink-100 px-3 py-2 font-bold text-pink-800 disabled:opacity-50">{generandoDescripcionId===a.id?"⌛ Creando…":"📝 Crear descripción"}</button>
                     </div>
                     <textarea id={"desc-"+a.id} rows={3} value={a.descripcion} disabled={ocupado} maxLength={2500}
                       placeholder="Escribe una descripción o pulsa Crear descripción" className={borde}
                       onChange={e=>cambiar(a.id,{descripcion:e.target.value},false)}/>
+                    {a.aviso&&<p role="status" aria-live="polite" className="mt-2 rounded-xl bg-pink-50 px-3 py-2 text-sm font-medium text-slate-700">{a.aviso}</p>}
                   </div>
                 </div>
                 {a.poster&&<p className="mt-3 text-xs font-bold text-green-700">✓ Póster nuevo generado. Si cambias nombre, categoría o precio deberás regenerarlo.</p>}
