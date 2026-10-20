@@ -38,8 +38,8 @@ export const metadata: Metadata = {
   },
 
   icons: {
-    icon: "/judis-halloween-icon-192.png",
-    apple: "/judis-halloween-icon-180.png",
+    icon: "/icon-192.png",
+    apple: "/icon-192.png",
   },
 
   manifest: "/manifest.webmanifest",
