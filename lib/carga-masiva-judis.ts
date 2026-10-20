@@ -15,6 +15,7 @@ function limpio(texto: string) {
 export function sugerirCategoria(nombre: string): CategoriaJudi | "" {
   const t = limpio(nombre);
   if (/\b(crocs|clog|tenis|zapatos?|sandalias?|botas?|sneakers?|calzado|chanclas?)\b/.test(t)) return "Calzado";
+  if (/\b(body mist|perfume mist|fine fragrance mist|bruma corporal|crema corporal)\b/.test(t)) return "Belleza";
   if (/\b(perfumes?|parfum|eau de toilette|eau de parfum|colonia|cologne)\b/.test(t)) return "Perfumes";
   if (/\b(crema|lotion|locion|mist|bruma|shimmer|body wash|jabon|soap|shampoo|skala|dermasil|exfoliante|serum|mascara|labial|maquillaje|gel antibacterial|pocketbac|bath body works)\b/.test(t)) return "Belleza";
   if (/\b(bolsa|bolso|cartera|wallet|backpack|mochila|tote|crossbody)\b/.test(t)) return "Bolsas y Carteras";
