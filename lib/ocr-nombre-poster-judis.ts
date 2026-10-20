@@ -1,176 +1,191 @@
 /**
- * Lectura local del texto de pósteres. La fotografía no se envía a terceros:
- * únicamente se descarga el motor OCR y los idiomas al navegador.
- * Se utiliza cuando la identificación visual configurada no está disponible.
- * Todos los nombres detectados son sugerencias que requieren revisión.
+ * Lee nombres escritos en pósteres. OCR en el dispositivo, con control
+ * conservador de calidad: nunca inventa un nombre si el texto no es legible.
  */
 type Caja = { x0: number; x1: number; y0: number; y1: number };
 type Linea = { text: string; confidence?: number; bbox?: Caja };
-type SalidaOCR = { data: { text: string; lines?: Linea[] } };
+type Parrafo = { lines?: Linea[] };
+type Bloque = { paragraphs?: Parrafo[] };
+type DatosOCR = { text: string; lines?: Linea[]; blocks?: Bloque[] };
+type ResultadoOCR = { data: DatosOCR };
 type TrabajadorOCR = {
-  recognize: (imagen: Blob) => Promise<SalidaOCR>;
-  terminate: () => Promise<void>;
+  recognize: (imagen: Blob, options?: object, output?: { text?: boolean; blocks?: boolean; tsv?: boolean }) => Promise<ResultadoOCR>;
 };
-type MotorOCR = {
-  createWorker: (lang: string, oem?: number) => Promise<TrabajadorOCR>;
-};
+type MotorOCR = { createWorker: (lang: string, oem?: number) => Promise<TrabajadorOCR> };
 
-const URL_LIBRERIA = "https://cdn.jsdelivr.net/npm/tesseract.js@5.1.1/dist/tesseract.min.js";
-let motorPendiente: Promise<MotorOCR> | null = null;
-let trabajadorPendiente: Promise<TrabajadorOCR> | null = null;
+export type ProductoLeido = { nombre: string; marca: string; categoria: string };
 
-function cargarMotor(): Promise<MotorOCR> {
-  if (motorPendiente) return motorPendiente;
-  motorPendiente = new Promise<MotorOCR>((resolve, reject) => {
+const LIBRERIA = "https://cdn.jsdelivr.net/npm/tesseract.js@5.1.1/dist/tesseract.min.js";
+let motor: Promise<MotorOCR> | null = null;
+let lector: Promise<TrabajadorOCR> | null = null;
+
+async function cargarMotor(): Promise<MotorOCR> {
+  if (motor) return motor;
+  motor = new Promise<MotorOCR>((resolve, reject) => {
     const actual = (window as unknown as { Tesseract?: MotorOCR }).Tesseract;
-    if (actual) { resolve(actual); return; }
+    if (actual) return resolve(actual);
     const script = document.createElement("script");
-    script.src = URL_LIBRERIA;
+    script.src = LIBRERIA;
     script.async = true;
     script.crossOrigin = "anonymous";
     script.referrerPolicy = "no-referrer";
     const limite = window.setTimeout(() => {
       script.remove();
-      reject(new Error("El reconocimiento de texto tardó demasiado."));
+      reject(new Error("Tiempo de espera agotado al cargar OCR."));
     }, 25000);
     script.onload = () => {
       window.clearTimeout(limite);
-      const cargado = (window as unknown as { Tesseract?: MotorOCR }).Tesseract;
-      if (cargado) resolve(cargado);
-      else reject(new Error("No se pudo cargar el lector de texto."));
+      const instalado = (window as unknown as { Tesseract?: MotorOCR }).Tesseract;
+      if (instalado) resolve(instalado);
+      else reject(new Error("El lector de texto no se cargó."));
     };
     script.onerror = () => {
       window.clearTimeout(limite);
-      script.remove();
-      reject(new Error("El lector de texto no está disponible en este momento."));
+      reject(new Error("Sin acceso al lector de texto."));
     };
     document.head.appendChild(script);
-  }).catch(error => { motorPendiente = null; throw error; });
-  return motorPendiente;
+  }).catch(err => { motor = null; throw err; });
+  return motor;
 }
-
-async function trabajador() {
-  if (!trabajadorPendiente) {
-    trabajadorPendiente = cargarMotor().then(motor => motor.createWorker("spa+eng", 1))
-      .catch(error => { trabajadorPendiente = null; throw error; });
+async function trabajador(): Promise<TrabajadorOCR> {
+  if (!lector) {
+    lector = cargarMotor().then(m => m.createWorker("spa+eng",1))
+      .catch(err => { lector = null; throw err; });
   }
-  return trabajadorPendiente;
+  return lector;
 }
-
-function normalizar(t: string) {
+function normal(t:string) {
   return t.normalize("NFD").replace(/[\u0300-\u036f]/g, "")
-    .replace(/[’‘]/g, "'").replace(/\s+/g, " ").trim().toLowerCase();
+    .replace(/[’‘]/g, "'").toLowerCase().replace(/\s+/g," ").trim();
 }
-function limpiarLinea(t: string) {
-  return t.replace(/[’‘]/g, "'").replace(/[|~^*_=]+/g, " ").replace(/[^A-Za-zÁÉÍÓÚÜÑáéíóúüñ0-9 &'°-]/g, " ")
-    .replace(/\s+/g, " ").trim().slice(0, 110);
+function limpia(t:string) {
+  return t.replace(/[’‘]/g,"'").replace(/[|~^*_=]+/g," ")
+    .replace(/[^A-Za-zÁÉÍÓÚÜÑáéíóúüñ0-9 &'°.,-]/g," ")
+    .replace(/\s+/g," ").trim().slice(0,110);
 }
-const textoNoProducto = [
-  /^judi\s*'?s?\s*shop/, /bath\s*(?:&|and|y)\s*body\s*works/,
-  /victoria'?s?\s*secret/, /^(?:crocs|dermasil|lattafa|perry ellis|guess|coach)$/,
-  /^(?:everyday|luxuries|fruit|fusion)$/, /^by\s+bath/, /p[ií]delo\s+por\s+mensaje/,
-  /original(?:es)?$/, /^disponible$/, /disponible\s+en/,
-  /www\.|\.com\b/, /c[oó]digo|promoci[oó]n/,
-  /set ideal para/, /un aroma que/, /tu aroma favorito/,
-  /elegancia que enamora|c[oó]modos y ligeros|^con estilo$|^ligeros$/,
-  /hidrataci[oó]n|humectaci[oó]n|p[ií]el\s+suave/,
-  /suavidad y|frescura y|brillo y aroma/,
-  /fragrance mist for|body lotion$|crema corporal hidratante/,
-  /\b\d+\s*(?:ml|mL|oz|g|kg|fl)\b/i,
-  /^fragrance mist$/, /^fine fragrance mist$/, /^eau de toilette$/,
-  /^original\s*100%/, /regalo|para tu d[ií]a/,
-  /dise[nñ]o con|^aroma |^cuidado |^el accesorio/,
-];
-const colecciones = ["everyday luxuries", "fruit fusion", "victoria's secret", "bath & body works"];
 const marcas = [
-  { patron: /bath\s*(?:&|and|y)\s*body\s*works/i, nombre: "Bath & Body Works" },
-  { patron: /victoria'?s?\s*secret/i, nombre: "Victoria's Secret" },
-  { patron: /\bcrocs\b/i, nombre: "Crocs" },
-  { patron: /\blattafa\b/i, nombre: "Lattafa" },
-  { patron: /\bperry\s+ellis\b/i, nombre: "Perry Ellis" },
-  { patron: /\bdermasil\b/i, nombre: "Dermasil" },
+  { rx:/bath\s*(?:&|and|y)\s*body\s*works/i, nombre:"Bath & Body Works", categoria:"Belleza" },
+  { rx:/victoria'?s?\s*secret/i, nombre:"Victoria's Secret", categoria:"Belleza" },
+  { rx:/\bcrocs\b/i, nombre:"Crocs", categoria:"Calzado" },
+  { rx:/\blattafa\b/i, nombre:"Lattafa", categoria:"Perfumes" },
+  { rx:/\bperry\s+ellis\b/i, nombre:"Perry Ellis", categoria:"Perfumes" },
+  { rx:/\bdermasil\b/i, nombre:"Dermasil", categoria:"Belleza" },
 ];
-
-function rechazar(t: string) {
-  const limpio = limpiarLinea(t);
-  const norm = normalizar(limpio);
-  if (!limpio || norm.length < 4 || norm.length > 74 || (/^\d/.test(norm) && !/^360\s/.test(norm))) return true;
-  if (/^(?:\d+|[a-z])$/.test(norm) || /(?:\$|#|@|https?:\/\/)/.test(t)) return true;
-  if (textoNoProducto.some(r => r.test(norm))) return true;
-  if (norm.split(" ").length > 9) return true;
-  return /^[\d\s\W]+$/.test(norm);
+const frasesExcluidas = [
+  /^judi\s*'?s?\s*shop\b/, /^bath\s*(?:&|and|y)\s*body\s*works\b/,
+  /^victoria'?s?\s*secret$/, /^(?:crocs|dermasil|lattafa|perry ellis)$/,
+  /^colec(?:cion|cion completa)\b/, /coleccion completa/, /disponible/,
+  /p[ií]delo\s+por\s+mensaje/, /original/, /autentico/,
+  /set ideal|dulce y deliciosa|para consentirte|hidrataci[oó]n|humectaci[oó]n/,
+  /elegancia que enamora|lleva tu|accesorio perfecto|frescura y/,
+  /brillo y aroma|toca las estrellas|piel seca/,
+  /^mist\s*\+|body cream|body wash|perfume mist for body/,
+  /fragrance mist|locion corporal|jab[oó]n espumoso|^crema corporal/,
+  /\b\d+\s*(?:ml|oz|g|kg|fl)\b/, /^talla\s*\d+$/,
+  /everyday luxuries|^fruit fusion$|^into the night set de/,
+  /^un aroma|^tu aroma|^cuida tu|^aroma|^dise[nñ]o/,
+  /\bshop\b|^belleza original|^nuevo|pocketbac con mucho estilo/
+];
+function valido(raw:string):boolean {
+  const s=limpia(raw), n=normal(s);
+  if((n.length<7 && n!=="yara") || n.length>65 || (/^\d/.test(n)&&!/^360\s/.test(n)))return false;
+  const palabras=n.split(/\s+/);
+  if(palabras.length>7 || (!palabras.some(w=>w.replace(/[^a-z]/g,"").length>=5) && n!=="yara"))return false;
+  if(frasesExcluidas.some(rx=>rx.test(n)))return false;
+  if(/[<>$@#]/.test(raw))return false;
+  return true;
 }
-
-function puntuar(linea: Linea, alto: number) {
-  if (rechazar(linea.text)) return -100;
-  const t = normalizar(linea.text);
-  const palabras = t.split(" ").length;
-  const h = linea.bbox ? linea.bbox.y1 - linea.bbox.y0 : 0;
-  const y = linea.bbox ? linea.bbox.y0 / Math.max(1, alto) : .45;
-  const tam = Math.min(33, h / 2);
-  const confianza = Math.max(-12, Math.min(10, (linea.confidence ?? 60) / 6 - 7));
-  let puntos = 15 + tam + confianza + (y < .52 ? 12 : y > .86 ? -35 : 0);
-  if (palabras >= 2 && palabras <= 5) puntos += 12;
-  if (palabras > 7) puntos -= 16;
-  if (/\b(shampoo|serum|crocs|clog|crema|perfume|lotion|mist|bolsa|monedero|portagel|llavero|jabon)\b/.test(t)) puntos += 5;
-  if (/^everyday luxuries$|^fruit fusion$/.test(t)) puntos -= 18;
-  if (/(?:disponible|especial|perfecto|femenina|adorable|descubre|calidad|original)/.test(t)) puntos -= 28;
+function lineaOCR(data:DatosOCR):Linea[] {
+  if(data.lines?.length)return data.lines;
+  const nested=(data.blocks||[]).flatMap(block=>(block.paragraphs||[]).flatMap(p=>p.lines||[]));
+  if(nested.length)return nested;
+  return data.text.split("\n").map(text=>({text}));
+}
+function titulo(texto:string):string {
+  return limpia(texto).toLocaleLowerCase("es").split(" ").map(p=>{
+    if(/^(?:de|la|el|con|y|the|of|for|para|and)$/.test(p))return p;
+    return p?p[0].toLocaleUpperCase("es")+p.slice(1):"";
+  }).join(" ").trim();
+}
+export function nombrePareceValido(t:string):boolean {return valido(t);}
+function puntuar(l:Linea, alto:number):number {
+  if(!valido(l.text))return -1e3;
+  const n=normal(l.text),words=n.split(" ").length;
+  const bbox=l.bbox;
+  const h=bbox?bbox.y1-bbox.y0:0;
+  const y=bbox?bbox.y0/Math.max(1,alto):.35;
+  const confidence=l.confidence;
+  if(typeof confidence==="number" && confidence<22)return -1e3;
+  let puntos=10+Math.min(40,h/2);
+  puntos+=(words>=2 && words<=4)?22:words===1?7:0;
+  puntos+=Math.min(16,Math.max(0,n.length-6));
+  if(y<.68)puntos+=12;else puntos-=12;
+  if(typeof confidence==="number")puntos+=Math.max(-12,(confidence-55)/3);
+  if(/pound cake|cherry blossom|cherry crush|berry bliss|baya clog|velvet petals|champagne toast/.test(n))puntos+=35;
   return puntos;
 }
-
-function titular(texto: string) {
-  const palabras = limpiarLinea(texto).toLocaleLowerCase("es").split(" ");
-  return palabras.map(p => {
-    if (/^(de|la|las|el|en|para|por|the|and|of|y|con|to)$/.test(p)) return p;
-    return p ? p[0].toLocaleUpperCase("es") + p.slice(1) : "";
-  }).join(" ").replace(/\bK\b/g, "K").trim();
+// Los pósteres tienen texto extra (marca, slogan, botón). Usa el tamaño,
+// confianza y orden visual para distinguir el título comercial.
+export function nombreEnTextoOCR(datos: DatosOCR, altoImagen:number):string {
+  const lineas=lineaOCR(datos).map(l=>({...l,text:limpia(l.text)})).filter(l=>l.text);
+  const opciones:{nombre:string;puntos:number}[]=[];
+  for(const l of lineas)opciones.push({nombre:l.text,puntos:puntuar(l,altoImagen)});
+  for(let i=0;i<lineas.length-1;i++){
+    const a=lineas[i],b=lineas[i+1];
+    const texto=a.text+" "+b.text;
+    if(!valido(texto) || !valido(a.text) || !valido(b.text))continue;
+    const h1=a.bbox?a.bbox.y1-a.bbox.y0:0,h2=b.bbox?b.bbox.y1-b.bbox.y0:0;
+    if(a.bbox && b.bbox){
+      const distancia=b.bbox.y0-a.bbox.y1;
+      if(distancia < -12 || distancia > Math.max(10,h1,h2)*1.15)continue;
+      if(h1>0&&h2>0&&(h1/h2>2 || h2/h1>2))continue;
+    }else if(a.text.split(" ").length+b.text.split(" ").length>5)continue;
+    opciones.push({nombre:texto,puntos:Math.max(puntuar(a,altoImagen),puntuar(b,altoImagen))+20});
+  }
+  opciones.sort((a,b)=>b.puntos-a.puntos);
+  const mejor=opciones.find(o=>o.puntos>=51 && valido(o.nombre));
+  return mejor?titulo(mejor.nombre):"";
 }
 
-export function nombreEnTextoOCR(datos: SalidaOCR["data"], altoImagen: number): string {
-  const fuentes: Linea[] = datos.lines?.length ? datos.lines : datos.text.split("\n").map(text => ({ text }));
-  const lineas: Linea[] = fuentes.map(linea => ({ ...linea, text: limpiarLinea(linea.text) }))
-    .filter(linea => linea.text);
-  const candidatos = lineas.map((linea, idx) => ({ texto: linea.text, puntos: puntuar(linea, altoImagen), idx }));
-  // Reconoce nombres grandes divididos en dos renglones: «Japanese / Cherry Blossom».
-  for (let i = 0; i < lineas.length - 1; i++) {
-    const uno = lineas[i], dos = lineas[i + 1];
-    if (rechazar(uno.text) || rechazar(dos.text) || !uno.bbox || !dos.bbox) continue;
-    const h1 = uno.bbox.y1 - uno.bbox.y0, h2 = dos.bbox.y1 - dos.bbox.y0;
-    const separacion = dos.bbox.y0 - uno.bbox.y1;
-    const pareja = uno.text + " " + dos.text;
-    if (h1 > 8 && h2 > 8 && h2 / h1 > .53 && h2 / h1 < 1.85 &&
-      separacion > -10 && separacion < Math.max(h1,h2)*1.05 &&
-      pareja.length <= 65 && pareja.split(" ").length <= 8 && !rechazar(pareja)) {
-      candidatos.push({texto: pareja,
-        puntos: Math.max(puntuar(uno,altoImagen),puntuar(dos,altoImagen)) + 13,idx:i});
-    }
-  }
-  candidatos.sort((a,b)=>b.puntos-a.puntos);
-  const mejor = candidatos[0];
-  if (!mejor || mejor.puntos < 37) return "";
-  let nombre = titular(mejor.texto);
-  const textoCompleto = lineas.map(l=>l.text).join(" ");
-  const marca = marcas.find(m=>m.patron.test(textoCompleto));
-  if (marca && !normalizar(nombre).includes(normalizar(marca.nombre))) {
-    nombre = marca.nombre + " " + nombre;
-  }
-  // Añade colección únicamente si aparece literalmente en el póster y no forma ya parte del nombre.
-  for (const coleccion of colecciones.slice(0,2)) {
-    if (normalizar(textoCompleto).includes(coleccion) && !normalizar(nombre).includes(coleccion)) {
-      const tieneVariante = /pink obsessed|all eyes on her|berry bliss|cherry crush/.test(normalizar(nombre));
-      if (tieneVariante) nombre = (marca ? marca.nombre + " " : "") + titular(coleccion) + " " +
-        (marca ? nombre.slice(marca.nombre.length + 1) : nombre);
-      break;
-    }
-  }
-  return nombre.replace(/\s+/g, " ").trim().slice(0, 140);
+async function recorteTitulo(archivo:File):Promise<Blob> {
+  const url=URL.createObjectURL(archivo);
+  try {
+    const imagen=new Image();
+    await new Promise<void>((ok,fail)=>{imagen.onload=()=>ok();imagen.onerror=()=>fail(new Error("Imagen no válida"));imagen.src=url;});
+    const ancho=imagen.naturalWidth,alto=imagen.naturalHeight;
+    // Los títulos ocupan la parte superior de los pósteres de la tienda.
+    const origen=Math.round(alto*.045),altoRecorte=Math.round(alto*.43);
+    const anchoFinal=Math.min(2000,Math.max(1350,ancho*1.5));
+    const escala=anchoFinal/ancho;
+    const canvas=document.createElement("canvas");
+    canvas.width=Math.round(ancho*escala);canvas.height=Math.round(altoRecorte*escala);
+    const context=canvas.getContext("2d");
+    if(!context)throw new Error("No se pudo preparar la lectura");
+    context.fillStyle="white";context.fillRect(0,0,canvas.width,canvas.height);
+    context.drawImage(imagen,0,origen,ancho,altoRecorte,0,0,canvas.width,canvas.height);
+    return await new Promise<Blob>((ok,fail)=>canvas.toBlob(blob=>blob?ok(blob):fail(new Error("No se pudo crear el recorte")),"image/png"));
+  } finally {URL.revokeObjectURL(url);}
 }
 
-export async function leerNombreDePoster(archivo: File): Promise<string> {
-  const worker = await trabajador();
-  const resultado = await worker.recognize(archivo);
-  // Las imágenes promocionales de Judi's Shop suelen ser verticales y el ancho puede variar.
-  // La caja OCR utiliza las coordenadas reales, por lo que tomamos su altura máxima.
-  const alto = Math.max(1, ...(resultado.data.lines ?? []).map(l => l.bbox?.y1 ?? 0));
-  return nombreEnTextoOCR(resultado.data, alto);
+export async function leerDatosDePoster(archivo:File):Promise<ProductoLeido> {
+  const worker=await trabajador();
+  const imagen=await recorteTitulo(archivo);
+  const opciones={text:true,blocks:true,tsv:true};
+  const resultado=await worker.recognize(imagen,{},opciones);
+  const lineas=lineaOCR(resultado.data);
+  const altura=Math.max(1,...lineas.map(l=>l.bbox?.y1??0));
+  let nombre=nombreEnTextoOCR(resultado.data,altura);
+  let texto=resultado.data.text;
+  if(!nombre) {
+    // Un segundo intento con la imagen completa solo si la primera lectura falla.
+    const segundo=await worker.recognize(archivo,{},opciones);
+    texto+=" "+segundo.data.text;
+    nombre=nombreEnTextoOCR(segundo.data,Math.max(1,...lineaOCR(segundo.data).map(l=>l.bbox?.y1??0)));
+  }
+  const marca=marcas.find(m=>m.rx.test(texto));
+  let categoria=marca?.categoria??"";
+  if(!categoria && /\b(?:crema|locion|lotion|mist|body wash|body cream|jab[oó]n|soap|skincare|bruma)\b/i.test(texto))categoria="Belleza";
+  if(!categoria && /\b(?:clog|tenis|sandalias|zapato|crocs)\b/i.test(texto))categoria="Calzado";
+  if(!categoria && /\b(?:eau de parfum|eau de toilette|perfume)\b/i.test(texto))categoria="Perfumes";
+  return {nombre,marca:marca?.nombre??"",categoria};
 }
