@@ -38,8 +38,8 @@ export async function POST(request: Request) {
     const marca = typeof datos.marca === "string" && datos.marca.trim() ? datos.marca.trim() : "Sin marca";
     const categoria = typeof datos.categoria === "string" ? datos.categoria.trim() : "";
     if (!nombre || nombre.length > 180 || marca.length > 100 ||
-        !CATEGORIAS_JUDIS.some(x => x === categoria)) {
-      return Response.json({ error: "Completa el nombre y la categoría antes de crear la descripción." }, { status: 400 });
+        (categoria && !CATEGORIAS_JUDIS.some(x => x === categoria))) {
+      return Response.json({ error: "Escribe un nombre de producto válido para crear la descripción." }, { status: 400 });
     }
     const alternativa = textoAlternativo(nombre, marca, categoria);
     if (!process.env.OPENAI_API_KEY) {
@@ -64,7 +64,7 @@ export async function POST(request: Request) {
               role: "system",
               content: "Eres redactor de catálogo para Judi's Shop en México. Escribe solamente una descripción comercial atractiva de 2 o 3 frases, máximo 350 caracteres, en español. Incluye uno o dos emojis de forma natural. Usa únicamente nombre, marca y categoría proporcionados. No inventes características físicas, aroma específico, materiales, tamaño, efectos, beneficios médicos, precio, certificaciones, disponibilidad ni autenticidad. Evita afirmaciones no verificadas. No devuelvas comillas ni introducciones.",
             },
-            { role: "user", content: JSON.stringify({ nombre, marca, categoria }) },
+            { role: "user", content: JSON.stringify({ nombre, marca, categoria: categoria || "No especificada" }) },
           ],
         }),
       });
