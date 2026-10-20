@@ -59,8 +59,8 @@ export async function POST(request: Request) {
       if (!nombre || nombre.length > 180 || descripcion.length > 2500 || !marca || marca.length > 100 ||
           !categorias.has(categoria) || precio === null || costo === null ||
           !Number.isSafeInteger(existencia) || existencia < 0 || existencia > 1_000_000 ||
-          !urlDeProducto(imagen) || !Array.isArray(imagenes) || imagenes.length !== 1 ||
-          !urlDeProducto(imagenes[0])) {
+          !urlDeProducto(imagen) || !Array.isArray(imagenes) || imagenes.length > 1 ||
+          !imagenes.every(urlDeProducto)) {
         return Response.json({ error: `Revisa nombre, categoría, precio, costo, existencia e imágenes del producto ${i + 1}.` }, { status: 400 });
       }
       registros.push({ nombre, descripcion, marca, categoria, precio, costo, existencia, imagen, imagenes });
