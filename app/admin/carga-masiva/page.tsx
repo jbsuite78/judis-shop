@@ -280,7 +280,7 @@ export default function CargaMasiva() {
                 </div>
                 {a.analizando&&<p className="mt-3 text-sm text-purple-700">🔎 Identificando producto…</p>}
                 <p className="mt-2 text-xs text-slate-500">Para crear la descripción basta con el nombre; puedes completar la categoría después.</p>
-                {a.aviso&&<p role="status" aria-live="polite" className="mt-3 rounded-xl bg-pink-50 px-3 py-2 text-sm font-medium text-slate-700">{a.aviso}</p>}
+                
                 <div className="mt-4 grid gap-3 sm:grid-cols-2">
                   <label className="sm:col-span-2 text-sm font-semibold">Nombre del producto
                     <input id={"nombre-"+a.id} value={a.nombre} disabled={ocupado} maxLength={180} className={borde} placeholder="Nombre y variante del producto (del póster)"
@@ -324,6 +324,7 @@ export default function CargaMasiva() {
                     <textarea id={"desc-"+a.id} rows={3} value={a.descripcion} disabled={ocupado} maxLength={2500}
                       placeholder="Escribe una descripción o pulsa Crear descripción" className={borde}
                       onChange={e=>cambiar(a.id,{descripcion:e.target.value},false)}/>
+                    {a.aviso&&<p role="status" aria-live="polite" className="mt-2 rounded-xl bg-pink-50 px-3 py-2 text-sm font-medium text-slate-700">{a.aviso}</p>}
                   </div>
                 </div>
                 {a.poster&&<p className="mt-3 text-xs font-bold text-green-700">✓ Póster nuevo generado. Si cambias nombre, categoría o precio deberás regenerarlo.</p>}
