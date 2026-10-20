@@ -23,7 +23,7 @@ function urlDeProducto(valor: unknown): valor is string {
 }
 function dinero(valor: unknown): number | null {
   const n = typeof valor === "number" || typeof valor === "string" && valor.trim() ? Number(valor) : NaN;
-  return Number.isFinite(n) && n >= 0 && n <= 10_000_000 && Math.round(n * 100) === n * 100
+  return Number.isFinite(n) && n >= 0 && n <= 10_000_000 && Math.abs(n * 100 - Math.round(n * 100)) < 0.000001
     ? n : null;
 }
 function normal(s: string) {
