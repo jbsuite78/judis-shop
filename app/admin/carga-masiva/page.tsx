@@ -22,7 +22,7 @@ function monedaValida(valor: string): boolean {
     Math.abs(numero * 100 - Math.round(numero * 100)) < 0.000001;
 }
 function claveProducto(valor: string): string {
-  return valor.normalize("NFD").replace(/[\\u0300-\\u036f]/g, "").trim().toLowerCase().replace(/\\s+/g, " ");
+  return valor.normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim().toLowerCase().replace(/\s+/g, " ");
 }
 function validarParaPublicar(articulos: Articulo[]): ErrorValidacion[] {
   const errores: ErrorValidacion[] = [];
