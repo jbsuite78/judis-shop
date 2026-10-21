@@ -57,7 +57,7 @@ export default function ImmersiveHero({ mode }: Props) {
             <div className="judis-3d-brand-bottom"><span>THE STYLE EDIT</span><span>USA · MX</span></div>
           </div>
           <div className="judis-3d-float judis-3d-float-top"><span className="judis-3d-float-star">✦</span><span>NUEVA<br/>COLECCIÓN</span></div>
-          <div className="judis-3d-float judis-3d-float-bottom"><span aria-hidden="true">♡</span> Curado para ti</div>
+          <div className="judis-3d-float judis-3d-float-bottom"><span aria-hidden="true">♡</span> Especial para ti</div>
           <div className="judis-3d-spark judis-3d-spark-one">✧</div>
           <div className="judis-3d-spark judis-3d-spark-two">✦</div>
         </div>
