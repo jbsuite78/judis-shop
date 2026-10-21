@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import DesktopHeader from "./DesktopHeader";
+import ImmersiveHero from "./ImmersiveHero";
 
 type Producto = {
   id?: number;
@@ -94,39 +95,12 @@ export default function DesktopStorefront() {
   }
 
   return (
-    <div className="min-h-screen bg-[#fdfafd] text-[#2d2230]">
+    <div className="judis-experience-home judis-experience-desktop min-h-screen bg-[#fdfafd] text-[#2d2230]">
       <DesktopHeader />
 
       <main className="mx-auto max-w-[1400px] px-6 pb-20 xl:px-10">
         <section aria-label="Destacados de Judi's Shop" className="mt-7 grid grid-cols-1 gap-5 lg:grid-cols-12">
-          <div className="relative min-h-[360px] overflow-hidden rounded-[27px] bg-gradient-to-br from-[#f7e1ee] via-[#fcecf6] to-[#eae0ff] shadow-[0_14px_38px_rgba(91,28,70,0.09)] lg:col-span-8">
-            <div className="pointer-events-none absolute -right-24 -top-24 h-80 w-80 rounded-full border-[42px] border-white/25" />
-            <div className="pointer-events-none absolute -bottom-28 right-28 h-48 w-48 rounded-full bg-white/20" />
-            <div className="relative grid h-full min-h-[360px] grid-cols-[1.1fr_0.9fr] items-center gap-3 px-8 py-8 xl:px-11">
-              <div className="z-10">
-                <div className="inline-flex items-center rounded-full border border-[#e9b7d4] bg-white/70 px-4 py-2 text-[11px] font-black uppercase tracking-[0.15em] text-[#ae155e]">
-                  🛍️ Bienvenidos a Judi&apos;s Shop
-                </div>
-                <h1 className="mt-5 max-w-[440px] text-[34px] font-black leading-[1.1] tracking-[-0.045em] text-[#41132f] xl:text-[46px]">
-                  Tus marcas favoritas, más cerca de ti.
-                </h1>
-                <p className="mt-4 max-w-[360px] text-sm font-medium leading-7 text-[#6f5063] xl:text-base">
-                  Bolsas, perfumes, ropa, calzado y mucho más. Productos originales seleccionados en Estados Unidos.
-                </p>
-                <Link href="/catalogo" className="mt-6 inline-flex items-center gap-3 rounded-[14px] bg-[#b7146c] px-6 py-3.5 text-sm font-black text-white shadow-[0_7px_20px_rgba(183,20,108,0.2)] transition hover:-translate-y-0.5 hover:bg-[#8d0f50]">
-                  Explorar productos <span aria-hidden="true">→</span>
-                </Link>
-              </div>
-              <div className="relative flex min-w-0 items-center justify-center">
-                <div className="absolute h-[260px] w-[260px] rounded-full bg-gradient-to-br from-white/90 to-[#eec7e1]/65 blur-[1px] xl:h-[300px] xl:w-[300px]" />
-                <img
-                  src="/marcas-judis.jpeg"
-                  alt="Selección de marcas de Judi's Shop"
-                  className="relative z-10 max-h-[272px] w-full max-w-[340px] rounded-[22px] border-[7px] border-white/80 bg-white object-contain shadow-[0_22px_48px_rgba(108,30,75,0.16)] [transform:rotate(3deg)]"
-                />
-              </div>
-            </div>
-          </div>
+          <ImmersiveHero mode="desktop" />
 
           <div className="grid gap-5 sm:grid-cols-2 lg:col-span-4 lg:grid-cols-1">
             <div className="relative flex min-h-[166px] flex-col justify-center overflow-hidden rounded-[25px] bg-[#661343] px-7 py-6 text-white shadow-[0_12px_28px_rgba(78,16,51,0.12)]">

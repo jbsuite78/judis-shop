@@ -270,7 +270,7 @@ const coincideCategoria =
   }
 
   return (
-    <main className="min-h-screen bg-[#fdfafd] pb-24 text-slate-900 md:pb-0">
+    <main className="judis-3d-catalog min-h-screen bg-[#fdfafd] pb-24 text-slate-900 md:pb-0">
       <DesktopHeader />
       <header className="border-b border-pink-100 bg-white md:hidden">
         <div className="mx-auto flex max-w-7xl items-center justify-between gap-3 px-4 py-3 sm:px-6 sm:py-5">
