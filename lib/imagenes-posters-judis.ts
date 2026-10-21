@@ -51,6 +51,17 @@ const tiene = (s: string, r: RegExp) => r.test(s);
 
 export function posterParaProducto(producto: ProductoConImagen): string | null {
   const nombre = normal(producto.nombre);
+
+  // Sustituye exclusivamente la imagen principal del set Velvet Petals;
+  // conserva el original y el resto de los datos de producto en la base.
+  const esSetVelvetPetals =
+    /\bvelvet petals\b/.test(nombre) && (
+      /\b(set|kit|combo|paquete|duo|dueto)\b/.test(nombre) ||
+      (/\b(mist|splash|bruma|fragancia|perfume|spray)\b/.test(nombre) &&
+        /\b(locion|lotion|crema)\b/.test(nombre)) ||
+      (/\b250\s?ml\b/.test(nombre) && /\b236\s?ml\b/.test(nombre))
+    );
+  if (esSetVelvetPetals) return "/posters/velvet-petals-set-20261021.jpg";
   const porId = typeof producto.id === "number" ? postersIndividuales[producto.id] : undefined;
   if (porId && nombre.includes(normal(porId.nombre))) return porId.url;
 
