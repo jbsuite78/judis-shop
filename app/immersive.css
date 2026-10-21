@@ -1,0 +1,254 @@
+/* Judi's Shop · Experiencia premium con profundidad 3D, sin WebGL ni cargas externas. */
+.judis-experience-home,
+.judis-3d-catalog {
+  background: radial-gradient(ellipse 70% 30% at 90% 0%, #fbe7f5 0%, transparent 70%), #fdf9fc;
+}
+.judis-immersive {
+  --judis-rx: 0deg;
+  --judis-ry: 0deg;
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  border-radius: 30px;
+  background: linear-gradient(125deg, #2a102d 0%, #55204b 36%, #91285c 70%, #b64b7c 100%);
+  color: white;
+  box-shadow: 0 28px 70px rgba(78, 18, 59, .23), inset 0 1px rgba(255,255,255,.19);
+}
+.judis-immersive::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background: radial-gradient(circle at 76% 43%, rgba(255,203,225,.36), transparent 34%), radial-gradient(circle at 25% 95%, rgba(157,77,187,.3), transparent 50%);
+}
+.judis-immersive::after {
+  content: "";
+  position: absolute;
+  inset: 1px;
+  border: 1px solid rgba(255,255,255,.18);
+  border-radius: inherit;
+  pointer-events: none;
+}
+.judis-immersive-grain {
+  position: absolute;
+  inset: 0;
+  opacity: .27;
+  pointer-events: none;
+  background-image: radial-gradient(rgba(255,255,255,.42) .6px, transparent .6px);
+  background-size: 23px 23px;
+  mask-image: linear-gradient(90deg, transparent 15%, black);
+}
+.judis-immersive-glow {
+  position: absolute;
+  width: 430px;
+  height: 430px;
+  right: -130px;
+  top: -90px;
+  border-radius: 50%;
+  background: rgba(255,190,220,.16);
+  filter: blur(55px);
+  pointer-events: none;
+}
+.judis-immersive--desktop {
+  grid-column: span 8/span 8;
+  min-height: 422px;
+  display: grid;
+  grid-template-columns: minmax(0, 1.02fr) minmax(0, .98fr);
+  align-items: center;
+  padding: 52px 0 52px 45px;
+}
+.judis-immersive-copy { position: relative; z-index: 5; }
+.judis-immersive-eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  padding: 9px 13px;
+  border: 1px solid rgba(255,230,240,.33);
+  border-radius: 99px;
+  background: rgba(255,255,255,.08);
+  backdrop-filter: blur(12px);
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: .16em;
+  color: #ffe4ef;
+}
+.judis-immersive-eyebrow span { font-size: 15px; color: #ffd3a3; }
+.judis-immersive h1 {
+  margin: 24px 0 0;
+  max-width: 590px;
+  font-size: clamp(33px, 3.45vw, 55px);
+  line-height: 1.04;
+  font-weight: 900;
+  letter-spacing: -.055em;
+}
+.judis-immersive h1 span {
+  display: block;
+  background: linear-gradient(93deg, #ffd2e7 6%, #ffe8b5 61%, #ffc6d8 99%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+.judis-immersive-copy > p {
+  margin-top: 19px;
+  max-width: 410px;
+  color: #f8dfe9;
+  font-size: 14px;
+  line-height: 1.85;
+}
+.judis-immersive-actions { display: flex; gap: 11px; flex-wrap: wrap; align-items: center; margin-top: 24px; }
+.judis-immersive-primary,
+.judis-immersive-secondary {
+  min-height: 46px;
+  display: inline-flex;
+  justify-content: center;
+  align-items: center;
+  gap: 14px;
+  border-radius: 13px;
+  padding: 12px 19px;
+  font-size: 12px;
+  font-weight: 850;
+  transition: transform .25s ease, background .25s ease, box-shadow .25s ease;
+}
+.judis-immersive-primary {
+  background: #fff4f7;
+  color: #772044;
+  box-shadow: 0 9px 24px rgba(29,6,27,.19);
+}
+.judis-immersive-secondary { color: white; border: 1px solid rgba(255,255,255,.35); background: rgba(255,255,255,.08); }
+.judis-immersive-primary:hover, .judis-immersive-secondary:hover { transform: translateY(-3px); }
+.judis-immersive-primary:hover { background: white; box-shadow: 0 15px 30px rgba(29,6,27,.24); }
+.judis-immersive-secondary:hover { background: rgba(255,255,255,.18); }
+.judis-immersive-footnote { display: flex; align-items: center; gap: 9px; margin-top: 25px; color: #f3cbdc; font-size: 11px; font-weight: 650; }
+.judis-immersive-footnote span:first-child { color: #f9d0a2; font-size: 15px; }
+.judis-immersive-secondary-mobile { display: none; }
+.judis-immersive-index { position: absolute; z-index: 3; right: 27px; bottom: 20px; color: rgba(255,242,248,.66); font-size: 9px; font-weight: 850; letter-spacing: .2em; }
+.judis-3d-stage { position: relative; height: 345px; z-index: 3; perspective: 1100px; }
+.judis-3d-world {
+  position: absolute;
+  inset: 0;
+  transform-style: preserve-3d;
+  transform: rotateX(var(--judis-rx)) rotateY(var(--judis-ry));
+  transition: transform .25s ease-out;
+}
+.judis-3d-halo { position: absolute; left: 50%; top: 49%; border: 1px solid rgba(255,230,239,.32); border-radius: 50%; transform-style: preserve-3d; }
+.judis-3d-halo-one { width: 285px; height: 285px; transform: translate(-50%,-50%) rotateX(70deg) rotateZ(-25deg); box-shadow: 0 0 45px rgba(255,185,215,.08); }
+.judis-3d-halo-two { width: 290px; height: 290px; transform: translate(-50%,-50%) rotateY(67deg) rotateZ(12deg); }
+.judis-3d-backplate {
+  position: absolute;
+  width: 214px;
+  height: 278px;
+  left: 50%;
+  top: 48%;
+  border-radius: 25px;
+  background: linear-gradient(145deg,rgba(255,255,255,.21),rgba(255,255,255,.02));
+  border: 1px solid rgba(255,255,255,.27);
+  box-shadow: 22px 22px 65px rgba(21,7,34,.27);
+  transform: translate(-50%,-50%) translate3d(32px,-12px,-25px) rotate(14deg);
+  backdrop-filter: blur(4px);
+}
+.judis-3d-brand-card {
+  position: absolute;
+  left: 50%;
+  top: 48%;
+  display: flex;
+  flex-direction: column;
+  width: 218px;
+  height: 279px;
+  padding: 14px;
+  border: 1px solid #fff;
+  border-radius: 21px;
+  background: linear-gradient(158deg, #fff, #fdeaf5);
+  color: #78254b;
+  box-shadow: 12px 30px 55px rgba(26,4,29,.35), inset 0 0 0 5px rgba(255,255,255,.6);
+  transform: translate(-50%,-50%) translateZ(64px) rotate(-10deg);
+  animation: judis-float 6.5s ease-in-out infinite;
+}
+.judis-3d-brand-top, .judis-3d-brand-bottom { display: flex; align-items: center; justify-content: space-between; font-weight: 900; letter-spacing: .15em; font-size: 11px; }
+.judis-3d-brand-top span:last-child { color: #ce6b9d; font-size: 17px; }
+.judis-3d-photo { flex: 1; min-height: 0; display: grid; place-items: center; margin: 12px 0; border-radius: 10px; background: #fff; overflow: hidden; box-shadow: inset 0 0 0 1px #f5d7e5; }
+.judis-3d-photo img { width: 100%; height: 100%; object-fit: contain; }
+.judis-3d-brand-bottom { font-size: 8px; letter-spacing: .12em; color: #a05277; }
+.judis-3d-float { position: absolute; z-index: 5; border: 1px solid rgba(255,255,255,.7); backdrop-filter: blur(19px); box-shadow: 0 20px 30px rgba(34,2,32,.18); }
+.judis-3d-float-top {
+  top: 5%; left: 5%;
+  width: 98px; height: 76px;
+  display: flex; align-items: center; justify-content: center; gap: 8px;
+  border-radius: 18px;
+  background: rgba(255,238,245,.87);
+  color: #722848;
+  font-size: 10px; line-height: 1.45; font-weight: 900; letter-spacing: .07em;
+  transform: translateZ(113px) rotate(-13deg);
+  animation: judis-float 5s ease-in-out -1s infinite;
+}
+.judis-3d-float-star { font-size: 27px; color: #b84483; }
+.judis-3d-float-bottom {
+  bottom: 10%; right: 0;
+  padding: 13px 15px; border-radius: 14px;
+  background: rgba(81,24,71,.69); color: white;
+  font-size: 11px; font-weight: 850;
+  transform: translateZ(120px) rotate(7deg);
+  animation: judis-float 5.5s ease-in-out -2s infinite;
+}
+.judis-3d-float-bottom span { color: #ffc7e0; font-size: 18px; vertical-align: -1px; margin-right: 4px; }
+.judis-3d-spark { position: absolute; font-size: 25px; color: #ffe2b3; filter: drop-shadow(0 0 9px rgba(255,216,163,.8)); animation: judis-twinkle 3s ease-in-out infinite; }
+.judis-3d-spark-one { right: 9%; top: 13%; }
+.judis-3d-spark-two { left: 16%; bottom: 11%; animation-delay: -1.4s; }
+@keyframes judis-float { 0%, 100% { translate: 0 0; } 50% { translate: 0 -9px; } }
+@keyframes judis-twinkle { 0%,100% { opacity: .45; scale: .85; } 50% { opacity: 1; scale: 1.15; } }
+/* Tarjetas y vitrinas elevadas: solo presentación, nunca afecta botones o datos. */
+.judis-experience-home article, .judis-3d-catalog article {
+  transform-style: preserve-3d;
+  transition: transform .32s cubic-bezier(.2,.85,.3,1), box-shadow .32s ease, border-color .32s ease;
+  border-color: #efd9e7;
+}
+.judis-experience-home article:hover, .judis-3d-catalog article:hover {
+  transform: perspective(980px) translateY(-8px) rotateX(2deg) rotateY(-2deg);
+  box-shadow: 0 22px 44px rgba(124,35,90,.16);
+  border-color: #e8b5d3;
+}
+.judis-experience-home article img, .judis-3d-catalog article img { transition: transform .4s cubic-bezier(.2,.8,.2,1); }
+.judis-experience-home article:hover img, .judis-3d-catalog article:hover img { transform: translateY(-3px) scale(1.035); }
+.judis-experience-home #categorias a > span:first-child, .judis-experience-home #categorias-movil a > span:first-child {
+  box-shadow: 0 10px 22px rgba(117,43,90,.1), inset 0 1px rgba(255,255,255,.9);
+  transition: transform .28s ease,box-shadow .28s ease;
+}
+.judis-experience-home #categorias a:hover > span:first-child, .judis-experience-home #categorias-movil a:hover > span:first-child { transform: perspective(600px) translateY(-5px) rotateX(8deg); box-shadow: 0 18px 32px rgba(117,43,90,.16); }
+.judis-3d-catalog > section > div:first-child h2 { color: #531c45; letter-spacing: -.035em; }
+.judis-3d-catalog > section > div:first-child p:first-child { letter-spacing: .23em; }
+@media (max-width: 1200px) and (min-width: 768px) {
+  .judis-immersive--desktop { min-height: 388px; padding: 36px 0 36px 28px; }
+  .judis-immersive h1 { font-size: clamp(30px,3.35vw,42px); }
+  .judis-3d-stage { transform: scale(.83); transform-origin: center; }
+  .judis-immersive-copy > p { font-size: 12px; }
+}
+@media (min-width: 768px) and (max-width: 1023px) {
+  .judis-immersive--desktop { grid-column: 1 / -1; }
+}
+@media (max-width: 767px) {
+  .judis-immersive--mobile {
+    margin-top: 14px;
+    min-height: 0;
+    padding: 25px 20px 0;
+    border-radius: 26px;
+    box-shadow: 0 17px 36px rgba(94,24,78,.22);
+  }
+  .judis-immersive--mobile .judis-immersive-copy { z-index: 5; }
+  .judis-immersive-eyebrow { font-size: 8px; letter-spacing: .11em; padding: 7px 9px; gap: 6px; }
+  .judis-immersive--mobile h1 { margin-top: 14px; font-size: clamp(29px,8vw,39px); max-width: 315px; }
+  .judis-immersive--mobile .judis-immersive-copy > p { margin-top: 10px; font-size: 12px; line-height: 1.6; max-width: 315px; }
+  .judis-immersive--mobile .judis-immersive-actions { margin-top: 17px; gap: 7px; }
+  .judis-immersive--mobile .judis-immersive-primary, .judis-immersive--mobile .judis-immersive-secondary { min-height: 40px; border-radius: 10px; padding: 9px 12px; font-size: 10px; gap: 7px; }
+  .judis-immersive-secondary-desktop { display: none; }
+  .judis-immersive-secondary-mobile { display: inline-flex; }
+  .judis-immersive--mobile .judis-immersive-footnote { margin-top: 13px; font-size: 9px; }
+  .judis-immersive--mobile .judis-3d-stage { height: 217px; width: 100%; max-width: 320px; margin: -8px auto 0; perspective: 800px; }
+  .judis-immersive--mobile .judis-3d-world { transform: rotateX(-5deg) rotateY(5deg) scale(.68); transform-origin: center center; }
+  .judis-immersive--mobile .judis-3d-brand-card { width: 218px; }
+  .judis-immersive--mobile .judis-immersive-index { bottom: 10px; right: 15px; font-size: 8px; }
+  .judis-3d-catalog article:hover, .judis-experience-home article:hover { transform: translateY(-3px); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .judis-3d-world, .judis-3d-brand-card, .judis-3d-float, .judis-3d-spark,
+  .judis-experience-home article, .judis-3d-catalog article, .judis-experience-home article img, .judis-3d-catalog article img { animation: none !important; transition: none !important; }
+  .judis-3d-world { transform: none !important; }
+}
