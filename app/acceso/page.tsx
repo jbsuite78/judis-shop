@@ -15,6 +15,7 @@ export default function AccesoAdmin(){
  }
  return <main className="min-h-screen flex items-center justify-center bg-pink-50 px-6 text-slate-900">
   <form onSubmit={ingresar} className="w-full max-w-md rounded-3xl bg-white p-8 shadow-lg">
+   <img src="/js-logo-3d.svg" alt="Logotipo 3D de Judi’s Shop" width={104} height={104} className="mx-auto mb-4 h-26 w-26 rounded-full border-2 border-amber-300 object-cover shadow-lg" />
    <h1 className="text-3xl font-bold text-center">Judi&apos;s Shop</h1>
    <p className="text-center text-gray-500 my-5">🔐 Acceso administrativo seguro</p>
    <label htmlFor="admin-password" className="block mb-2 font-semibold">Contraseña</label>
