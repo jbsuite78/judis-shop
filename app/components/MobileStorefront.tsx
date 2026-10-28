@@ -94,7 +94,7 @@ export default function MobileStorefront() {
       <header className="sticky top-0 z-40 border-b border-pink-100 bg-white/95 px-4 py-3 backdrop-blur-xl">
         <div className="mx-auto flex max-w-lg items-center justify-between gap-3">
           <Link href="/" className="flex min-w-0 items-center gap-2.5">
-            <img src="/judis-logo.jpeg" alt="Logotipo Judi's Shop" className="h-12 w-12 shrink-0 rounded-full border-2 border-pink-200 object-cover" />
+            <img src="/js-logo-3d.svg" alt="Logotipo Judi's Shop" className="h-12 w-12 shrink-0 rounded-full border-2 border-pink-200 object-cover" />
             <div className="min-w-0">
               <p className="truncate text-xl font-black tracking-tight text-[#c21871]">Judi&apos;s Shop</p>
               <p className="truncate text-[11px] font-medium text-slate-500">Tus marcas favoritas de USA 🇺🇸</p>
