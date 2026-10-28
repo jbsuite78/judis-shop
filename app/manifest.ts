@@ -18,12 +18,12 @@ export default function manifest(): MetadataRoute.Manifest {
         purpose: "any",
       },
       {
-        src: "/icon-192.png",
+        src: "/icon-192.png?v=js3d2",
         sizes: "192x192",
         type: "image/png",
       },
       {
-        src: "/icon-512.png",
+        src: "/icon-512.png?v=js3d2",
         sizes: "512x512",
         type: "image/png",
       },

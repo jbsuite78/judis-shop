@@ -39,8 +39,8 @@ export const metadata: Metadata = {
   },
 
   icons: {
-    icon: [{ url: "/js-logo-3d.svg?v=1", type: "image/svg+xml", sizes: "any" }, { url: "/icon-192.png", sizes: "192x192" }],
-    apple: "/icon-192.png",
+    icon: [{ url: "/js-logo-3d.svg?v=1", type: "image/svg+xml", sizes: "any" }, { url: "/icon-192.png?v=js3d2", sizes: "192x192" }],
+    apple: "/apple-touch-icon.png?v=js3d2",
   },
 
   manifest: "/manifest.webmanifest",
