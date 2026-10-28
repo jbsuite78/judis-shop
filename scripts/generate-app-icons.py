@@ -23,5 +23,5 @@ def icon(size, scale=0.96):
 icon(180).save(ROOT / "public" / "apple-touch-icon.png", optimize=True)
 icon(192).save(ROOT / "public" / "icon-192.png", optimize=True)
 icon(512).save(ROOT / "public" / "icon-512.png", optimize=True)
-icon(64).save(ROOT / "app" / "favicon.ico", format="ICO", sizes=[(16,16),(32,32),(48,48),(64,64)])
+icon(64).convert("RGBA").save(ROOT / "app" / "favicon.ico", format="ICO", sizes=[(16,16),(32,32),(48,48),(64,64)])
 print("Iconos 3D Judi's Shop listos")
