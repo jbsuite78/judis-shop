@@ -12,6 +12,12 @@ export default function manifest(): MetadataRoute.Manifest {
     orientation: "portrait",
     icons: [
       {
+        src: "/js-logo-3d.svg?v=1",
+        sizes: "any",
+        type: "image/svg+xml",
+        purpose: "any",
+      },
+      {
         src: "/icon-192.png",
         sizes: "192x192",
         type: "image/png",
